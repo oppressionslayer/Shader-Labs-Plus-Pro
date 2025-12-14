@@ -2019,9 +2019,58 @@
         }
 
         function exportShader() {
-            const code = `// Shader Lab Pro+ Export
-// ${shaderNames[currentShader]} - ${presets[currentShader][currentPreset].name}
+            // Get the current shader source
+            const shaderSources = [
+                shaders.icosahedron,
+                shaders.plasmaSphere,
+                shaders.fractalOrb,
+                shaders.crystalMatrix,
+                shaders.neonWireframe
+            ];
 
+            let shaderCode = shaderSources[currentShader];
+
+            // Remove WebGL-specific lines and convert to Shadertoy format
+            shaderCode = shaderCode
+                // Remove precision declaration (Shadertoy handles this)
+                .replace(/precision highp float;\s*/g, '')
+                // Remove uniform declarations - we'll use defines instead
+                .replace(/uniform vec2 iResolution;\s*/g, '')
+                .replace(/uniform float iTime;\s*/g, '')
+                .replace(/uniform vec4 iMouse;\s*/g, '')
+                .replace(/uniform float uSpeed;\s*/g, '')
+                .replace(/uniform float uTimeOffset;\s*/g, '')
+                .replace(/uniform float uZoom;\s*/g, '')
+                .replace(/uniform float uFov;\s*/g, '')
+                .replace(/uniform float uCamHeight;\s*/g, '')
+                .replace(/uniform float uSpikeLength;\s*/g, '')
+                .replace(/uniform float uSpikeWidth;\s*/g, '')
+                .replace(/uniform float uShellThickness;\s*/g, '')
+                .replace(/uniform float uSphereRadius;\s*/g, '')
+                .replace(/uniform float uSmoothing;\s*/g, '')
+                .replace(/uniform vec3 uLightDir;\s*/g, '')
+                .replace(/uniform float uAmbient;\s*/g, '')
+                .replace(/uniform float uDiffuse;\s*/g, '')
+                .replace(/uniform float uShadowSoft;\s*/g, '')
+                .replace(/uniform vec3 uObjectColor;\s*/g, '')
+                .replace(/uniform vec3 uLightColor;\s*/g, '')
+                .replace(/uniform vec3 uAmbientColor;\s*/g, '')
+                .replace(/uniform vec3 uBgColor;\s*/g, '')
+                // Convert main() to mainImage()
+                .replace(/void main\(\)\s*\{/, 'void mainImage(out vec4 fragColor, in vec2 fragCoord) {')
+                // Replace gl_FragCoord with fragCoord
+                .replace(/gl_FragCoord/g, 'fragCoord')
+                // Replace gl_FragColor with fragColor
+                .replace(/gl_FragColor/g, 'fragColor')
+                .trim();
+
+            // Build the defines header with current parameter values
+            const defines = `// ============================================
+// Shader Lab Pro+ Export - Shadertoy Compatible
+// ${shaderNames[currentShader]} - ${presets[currentShader][currentPreset].name}
+// ============================================
+
+// Parameter Defines (edit these to change the look)
 #define uSpeed ${getSliderValue('speed').toFixed(3)}
 #define uTimeOffset ${getSliderValue('timeOffset').toFixed(3)}
 #define uZoom ${getSliderValue('zoom').toFixed(3)}
@@ -2041,10 +2090,11 @@
 #define uAmbientColor vec3(${getColorValue('ambientColor').r.toFixed(3)}, ${getColorValue('ambientColor').g.toFixed(3)}, ${getColorValue('ambientColor').b.toFixed(3)})
 #define uBgColor vec3(${getColorValue('bgColor').r.toFixed(3)}, ${getColorValue('bgColor').g.toFixed(3)}, ${getColorValue('bgColor').b.toFixed(3)})
 
-// Paste the main shader code here and replace uniform declarations with defines above
 `;
 
-            document.getElementById('exportCode').textContent = code;
+            const fullCode = defines + shaderCode;
+
+            document.getElementById('exportCode').textContent = fullCode;
             document.getElementById('exportModal').classList.add('active');
         }
 
