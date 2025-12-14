@@ -483,7 +483,7 @@
 
         .modal-body {
             padding: 20px;
-            max-height: 60vh;
+            max-height: 55vh;
             overflow-y: auto;
         }
 
@@ -499,8 +499,13 @@
             word-break: break-all;
         }
 
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-panel);
+        }
+
         .copy-btn {
-            margin-top: 15px;
             width: 100%;
         }
 
@@ -779,6 +784,8 @@
             </div>
             <div class="modal-body">
                 <div class="code-block" id="exportCode"></div>
+            </div>
+            <div class="modal-footer">
                 <button class="btn btn-primary copy-btn" id="copyBtn">Copy to Clipboard</button>
             </div>
         </div>
