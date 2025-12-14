@@ -1,0 +1,2127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shader Lab Pro+ | Icosahedron Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --accent-primary: #00ff88;
+            --accent-secondary: #ff3366;
+            --accent-tertiary: #00e5ff;
+            --bg-dark: #0a0a0f;
+            --bg-panel: rgba(15, 15, 25, 0.95);
+            --text-primary: #ffffff;
+            --text-secondary: #888899;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            min-height: 100vh;
+            gap: 0;
+        }
+
+        @media (max-width: 1000px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 60vh auto;
+            }
+        }
+
+        /* Canvas Section */
+        .canvas-section {
+            position: relative;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #shaderCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .canvas-overlay {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge-live {
+            color: var(--accent-primary);
+        }
+
+        .badge-live::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        .fps-counter {
+            color: var(--accent-tertiary);
+        }
+
+        /* Control Panel */
+        .control-panel {
+            background: var(--bg-panel);
+            border-left: 1px solid var(--border-color);
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+
+        .panel-header {
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(255, 51, 102, 0.1));
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            backdrop-filter: blur(20px);
+        }
+
+        .panel-title {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-tertiary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .panel-subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Sections */
+        .section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 3px;
+            height: 12px;
+            background: var(--accent-primary);
+            border-radius: 2px;
+        }
+
+        /* Shader Selector */
+        .shader-select {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .shader-select:hover {
+            border-color: var(--accent-primary);
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .shader-select option {
+            background: var(--bg-dark);
+            padding: 10px;
+        }
+
+        /* Presets Grid */
+        .presets-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .preset-btn {
+            padding: 10px 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .preset-btn:hover {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: var(--accent-primary);
+            color: var(--text-primary);
+        }
+
+        .preset-btn.active {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 229, 255, 0.2));
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+        }
+
+        /* Slider Control */
+        .slider-control {
+            margin-bottom: 18px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .slider-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .slider-value {
+            font-size: 12px;
+            color: var(--accent-tertiary);
+            font-weight: 600;
+            font-family: 'Consolas', monospace;
+        }
+
+        .slider-track {
+            position: relative;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .slider-fill {
+            position: absolute;
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-tertiary));
+            border-radius: 3px;
+            transition: width 0.1s ease;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+            position: relative;
+            z-index: 2;
+            margin-top: -6px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+            transition: transform 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            border: none;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        /* Color Picker */
+        .color-control {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .color-picker-wrapper {
+            position: relative;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid var(--border-color);
+            transition: border-color 0.3s ease;
+        }
+
+        .color-picker-wrapper:hover {
+            border-color: var(--accent-primary);
+        }
+
+        input[type="color"] {
+            width: 60px;
+            height: 60px;
+            border: none;
+            cursor: pointer;
+            position: absolute;
+            top: -10px;
+            left: -10px;
+        }
+
+        .color-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            flex: 1;
+        }
+
+        .color-hex {
+            font-size: 11px;
+            color: var(--accent-tertiary);
+            font-family: 'Consolas', monospace;
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-tertiary));
+            color: var(--bg-dark);
+            border: none;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--accent-primary);
+        }
+
+        /* Toggle Switch */
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .toggle-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .toggle {
+            width: 44px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .toggle.active {
+            background: var(--accent-primary);
+        }
+
+        .toggle::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: transform 0.3s ease;
+        }
+
+        .toggle.active::after {
+            transform: translateX(20px);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 15px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 8px;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 18px;
+            transition: background 0.3s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--accent-secondary);
+        }
+
+        .modal-body {
+            padding: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .code-block {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            color: var(--accent-tertiary);
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .copy-btn {
+            margin-top: 15px;
+            width: 100%;
+        }
+
+        /* Info text */
+        .info-text {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 10px;
+            line-height: 1.5;
+        }
+
+        /* Keyboard shortcuts */
+        kbd {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-family: inherit;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="canvas-section">
+            <canvas id="shaderCanvas"></canvas>
+            <div class="canvas-overlay">
+                <div class="badge badge-live">LIVE</div>
+                <div class="badge fps-counter" id="fpsCounter">60 FPS</div>
+                <div class="badge" id="presetIndicator">Icosahedron | Default</div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <div class="panel-header">
+                <div class="panel-title">Shader Lab Pro+</div>
+                <div class="panel-subtitle">Icosahedron Explorer v1.0</div>
+            </div>
+
+            <!-- Shader Selection -->
+            <div class="section">
+                <div class="section-title">Shader</div>
+                <select class="shader-select" id="shaderSelect">
+                    <option value="0">Icosahedron Spikes</option>
+                    <option value="1">Plasma Sphere</option>
+                    <option value="2">Fractal Orb</option>
+                    <option value="3">Crystal Matrix</option>
+                    <option value="4">Neon Wireframe</option>
+                </select>
+            </div>
+
+            <!-- Presets -->
+            <div class="section">
+                <div class="section-title">Presets</div>
+                <div class="presets-grid" id="presetsGrid">
+                    <button class="preset-btn active" data-preset="0">Default</button>
+                    <button class="preset-btn" data-preset="1">Alien</button>
+                    <button class="preset-btn" data-preset="2">Crystal</button>
+                    <button class="preset-btn" data-preset="3">Fire</button>
+                    <button class="preset-btn" data-preset="4">Ice</button>
+                    <button class="preset-btn" data-preset="5">Neon</button>
+                    <button class="preset-btn" data-preset="6">Void</button>
+                    <button class="preset-btn" data-preset="7">Gold</button>
+                    <button class="preset-btn" data-preset="8">Matrix</button>
+                </div>
+            </div>
+
+            <!-- Animation -->
+            <div class="section">
+                <div class="section-title">Animation</div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Speed</span>
+                        <span class="slider-value" id="speedValue">1.00</span>
+                    </div>
+                    <div class="slider-track"><div class="slider-fill" id="speedFill"></div></div>
+                    <input type="range" id="speed" min="0" max="3" step="0.01" value="1">
+                </div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Time Offset</span>
+                        <span class="slider-value" id="timeOffsetValue">0.00</span>
+                    </div>
+                    <div class="slider-track"><div class="slider-fill" id="timeOffsetFill"></div></div>
+                    <input type="range" id="timeOffset" min="0" max="10" step="0.1" value="0">
+                </div>
+                <div class="toggle-row">
+                    <span class="toggle-label">Pause <kbd>SPACE</kbd></span>
+                    <div class="toggle" id="pauseToggle"></div>
+                </div>
+            </div>
+
+            <!-- Camera -->
+            <div class="section">
+                <div class="section-title">Camera</div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Zoom</span>
+                        <span class="slider-value" id="zoomValue">4.00</span>
+                    </div>
+                    <div class="slider-track"><div class="slider-fill" id="zoomFill"></div></div>
+                    <input type="range" id="zoom" min="1" max="10" step="0.1" value="4">
+                </div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">FOV</span>
+                        <span class="slider-value" id="fovValue">2.00</span>
+                    </div>
+                    <div class="slider-track"><div class="slider-fill" id="fovFill"></div></div>
+                    <input type="range" id="fov" min="0.5" max="5" step="0.1" value="2">
+                </div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Camera Height</span>
+                        <span class="slider-value" id="camHeightValue">1.00</span>
+                    </div>
+                    <div class="slider-track"><div class="slider-fill" id="camHeightFill"></div></div>
+                    <input type="range" id="camHeight" min="0" max="2" step="0.01" value="1">
+                </div>
+            </div>
+
+            <!-- Geometry -->
+            <div class="section" id="geometrySection">
+                <div class="section-title">Geometry</div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Spike Length</span>
+                        <span class="slider-value" id="spikeLengthValue">1.30</span>
+                    </div>
+                    <div class="slider-track"><div class="slider-fill" id="spikeLengthFill"></div></div>
+                    <input type="range" id="spikeLength" min="0" max="3" step="0.01" value="1.3">
+                </div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Spike Width</span>
+                        <span class="slider-value" id="spikeWidthValue">0.05</span>
+                    </div>
+                    <div class="slider-track"><div class="slider-fill" id="spikeWidthFill"></div></div>
+                    <input type="range" id="spikeWidth" min="0.01" max="0.3" step="0.01" value="0.05">
+                </div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Shell Thickness</span>
+                        <span class="slider-value" id="shellThicknessValue">0.03</span>
+                    </div>
+                    <div class="slider-track"><div class="slider-fill" id="shellThicknessFill"></div></div>
+                    <input type="range" id="shellThickness" min="0.01" max="0.2" step="0.005" value="0.03">
+                </div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Sphere Radius</span>
+                        <span class="slider-value" id="sphereRadiusValue">1.00</span>
+                    </div>
+                    <div class="slider-track"><div class="slider-fill" id="sphereRadiusFill"></div></div>
+                    <input type="range" id="sphereRadius" min="0.5" max="2" step="0.01" value="1">
+                </div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Smoothing</span>
+                        <span class="slider-value" id="smoothingValue">0.12</span>
+                    </div>
+                    <div class="slider-track"><div class="slider-fill" id="smoothingFill"></div></div>
+                    <input type="range" id="smoothing" min="0" max="0.5" step="0.01" value="0.12">
+                </div>
+            </div>
+
+            <!-- Lighting -->
+            <div class="section">
+                <div class="section-title">Lighting</div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Light X</span>
+                        <span class="slider-value" id="lightXValue">-0.60</span>
+                    </div>
+                    <div class="slider-track"><div class="slider-fill" id="lightXFill"></div></div>
+                    <input type="range" id="lightX" min="-1" max="1" step="0.01" value="-0.6">
+                </div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Light Y</span>
+                        <span class="slider-value" id="lightYValue">0.70</span>
+                    </div>
+                    <div class="slider-track"><div class="slider-fill" id="lightYFill"></div></div>
+                    <input type="range" id="lightY" min="-1" max="1" step="0.01" value="0.7">
+                </div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Light Z</span>
+                        <span class="slider-value" id="lightZValue">0.50</span>
+                    </div>
+                    <div class="slider-track"><div class="slider-fill" id="lightZFill"></div></div>
+                    <input type="range" id="lightZ" min="-1" max="1" step="0.01" value="0.5">
+                </div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Ambient</span>
+                        <span class="slider-value" id="ambientValue">0.80</span>
+                    </div>
+                    <div class="slider-track"><div class="slider-fill" id="ambientFill"></div></div>
+                    <input type="range" id="ambient" min="0" max="2" step="0.01" value="0.8">
+                </div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Diffuse</span>
+                        <span class="slider-value" id="diffuseValue">1.20</span>
+                    </div>
+                    <div class="slider-track"><div class="slider-fill" id="diffuseFill"></div></div>
+                    <input type="range" id="diffuse" min="0" max="3" step="0.01" value="1.2">
+                </div>
+                <div class="slider-control">
+                    <div class="slider-header">
+                        <span class="slider-label">Shadow Softness</span>
+                        <span class="slider-value" id="shadowSoftValue">8.00</span>
+                    </div>
+                    <div class="slider-track"><div class="slider-fill" id="shadowSoftFill"></div></div>
+                    <input type="range" id="shadowSoft" min="1" max="20" step="0.5" value="8">
+                </div>
+            </div>
+
+            <!-- Colors -->
+            <div class="section">
+                <div class="section-title">Colors</div>
+                <div class="color-control">
+                    <div class="color-picker-wrapper">
+                        <input type="color" id="objectColor" value="#808080">
+                    </div>
+                    <span class="color-label">Object Color</span>
+                    <span class="color-hex" id="objectColorHex">#808080</span>
+                </div>
+                <div class="color-control">
+                    <div class="color-picker-wrapper">
+                        <input type="color" id="lightColor" value="#f2cc99">
+                    </div>
+                    <span class="color-label">Light Color</span>
+                    <span class="color-hex" id="lightColorHex">#f2cc99</span>
+                </div>
+                <div class="color-control">
+                    <div class="color-picker-wrapper">
+                        <input type="color" id="ambientColor" value="#80b3cc">
+                    </div>
+                    <span class="color-label">Ambient Color</span>
+                    <span class="color-hex" id="ambientColorHex">#80b3cc</span>
+                </div>
+                <div class="color-control">
+                    <div class="color-picker-wrapper">
+                        <input type="color" id="bgColor" value="#0a0b0d">
+                    </div>
+                    <span class="color-label">Background</span>
+                    <span class="color-hex" id="bgColorHex">#0a0b0d</span>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="section">
+                <div class="section-title">Actions</div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" id="resetBtn">Reset</button>
+                    <button class="btn btn-primary" id="exportBtn">Export</button>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" id="randomBtn">Randomize</button>
+                    <button class="btn btn-secondary" id="screenshotBtn">Screenshot</button>
+                </div>
+                <div class="info-text">
+                    <kbd>SPACE</kbd> Pause &nbsp; <kbd>R</kbd> Reset &nbsp; <kbd>S</kbd> Screenshot
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal" id="exportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Export to Shadertoy</span>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="code-block" id="exportCode"></div>
+                <button class="btn btn-primary copy-btn" id="copyBtn">Copy to Clipboard</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // SHADER LAB PRO+ - Icosahedron Explorer
+        // ============================================
+
+        const canvas = document.getElementById('shaderCanvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+
+        if (!gl) {
+            alert('WebGL not supported!');
+        }
+
+        // Vertex shader - simple fullscreen quad
+        const vertexShaderSource = `
+            attribute vec2 a_position;
+            void main() {
+                gl_Position = vec4(a_position, 0.0, 1.0);
+            }
+        `;
+
+        // ============================================
+        // FRAGMENT SHADERS
+        // ============================================
+
+        const shaders = {
+            // Shader 0: Icosahedron Spikes (Original)
+            icosahedron: `
+                precision highp float;
+
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+
+                // Custom uniforms
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                #define PI 3.14159265359
+                #define saturate(x) clamp(x, 0., 1.)
+
+                float t;
+
+                float vmax(vec3 v) {
+                    return max(max(v.x, v.y), v.z);
+                }
+
+                float fBox(vec3 p, vec3 b) {
+                    vec3 d = abs(p) - b;
+                    return length(max(d, vec3(0))) + vmax(min(d, vec3(0)));
+                }
+
+                float fLineSegment(vec3 p, vec3 a, vec3 b) {
+                    vec3 ab = b - a;
+                    float t = saturate(dot(p - a, ab) / dot(ab, ab));
+                    return length((ab*t + a) - p);
+                }
+
+                float fCapsule(vec3 p, vec3 a, vec3 b, float r) {
+                    return fLineSegment(p, a, b) - r;
+                }
+
+                float fPlane(vec3 p, vec3 n, float distanceFromOrigin) {
+                    return dot(p, n) + distanceFromOrigin;
+                }
+
+                float fPlane(vec3 p, vec3 a, vec3 b, vec3 c, vec3 inside, float distanceFromOrigin) {
+                    vec3 n = normalize(cross(c - b, a - b));
+                    float d = -dot(a, n);
+                    if (dot(n, inside) + d > 0.) {
+                        n = -n;
+                        d = -d;
+                    }
+                    return fPlane(p, n, d + distanceFromOrigin);
+                }
+
+                float fOpIntersectionRound(float a, float b, float r) {
+                    float m = max(a, b);
+                    if ((-a < r) && (-b < r)) {
+                        return max(m, -(r - sqrt((r+a)*(r+a) + (r+b)*(r+b))));
+                    } else {
+                        return m;
+                    }
+                }
+
+                float fCone(vec3 p, float radius, float height) {
+                    vec2 q = vec2(length(p.xz), p.y);
+                    vec2 tip = q - vec2(0, height);
+                    vec2 mantleDir = normalize(vec2(height, radius));
+                    float mantle = dot(tip, mantleDir);
+                    float d = max(mantle, -q.y);
+                    float projected = dot(tip, vec2(mantleDir.y, -mantleDir.x));
+                    if ((q.y > height) && (projected < 0.)) {
+                        d = max(d, length(tip));
+                    }
+                    if ((q.x > radius) && (projected > length(vec2(height, radius)))) {
+                        d = max(d, length(q - vec2(radius, 0)));
+                    }
+                    return d;
+                }
+
+                void pR(inout vec2 p, float a) {
+                    p = cos(a)*p + sin(a)*vec2(p.y, -p.x);
+                }
+
+                float pReflect(inout vec3 p, vec3 planeNormal, float offset) {
+                    float t = dot(p, planeNormal)+offset;
+                    if (t < 0.) {
+                        p = p - (2.*t)*planeNormal;
+                    }
+                    return sign(t);
+                }
+
+                float fOpUnionRound(float a, float b, float r) {
+                    float m = min(a, b);
+                    if ((a < r) && (b < r)) {
+                        return min(m, r - sqrt((r-a)*(r-a) + (r-b)*(r-b)));
+                    } else {
+                        return m;
+                    }
+                }
+
+                vec3 bToC(vec3 A, vec3 B, vec3 C, vec3 barycentric) {
+                    return barycentric.x * A + barycentric.y * B + barycentric.z * C;
+                }
+
+                int Type = 5;
+                vec3 nc, pab, pbc, pca;
+                vec3 icoF0, icoF1a;
+                vec3 icoA0, icoB0, icoC0;
+                vec3 icoA1, icoB1, icoC1;
+                vec3 fold1, fold2, fold3;
+
+                void initIcosahedron() {
+                    float cospin = cos(PI/float(Type)), scospin = sqrt(0.75-cospin*cospin);
+                    nc = vec3(-0.5, -cospin, scospin);
+                    pab = vec3(0., 0., 1.);
+                    pbc = vec3(scospin, 0., 0.5);
+                    pca = vec3(0., scospin, cospin);
+                    pbc = normalize(pbc);
+                    pca = normalize(pca);
+
+                    vec3 A = pbc;
+                    vec3 C = reflect(A, normalize(cross(pab, pca)));
+                    vec3 B = reflect(C, normalize(cross(pbc, pca)));
+
+                    icoF0 = pca;
+                    icoA0 = A;
+                    icoC0 = B;
+                    icoB0 = C;
+
+                    vec3 p1 = bToC(A, B, C, vec3(.5, .0, .5));
+                    vec3 p2 = bToC(A, B, C, vec3(.5, .5, .0));
+                    fold1 = normalize(cross(p1, p2));
+
+                    vec3 A2 = reflect(A, fold1);
+                    vec3 B2 = p1;
+                    vec3 C2 = p2;
+
+                    icoF1a = pca;
+                    icoA1 = A2;
+                    icoB1 = normalize(B2);
+                    icoC1 = normalize(C2);
+
+                    p1 = bToC(A2, B2, C2, vec3(.5, .0, .5));
+                    p2 = bToC(A2, B2, C2, vec3(.5, .5, .0));
+                    fold2 = normalize(cross(p1, p2));
+
+                    p1 = bToC(A2, B2, C2, vec3(.0, .5, .5));
+                    fold3 = normalize(cross(p2, p1));
+                }
+
+                float pModIcosahedron(inout vec3 p, int subdivisions) {
+                    p = abs(p);
+                    pReflect(p, nc, 0.);
+                    p.xy = abs(p.xy);
+                    pReflect(p, nc, 0.);
+                    p.xy = abs(p.xy);
+                    pReflect(p, nc, 0.);
+
+                    float i = 0.;
+
+                    if (subdivisions > 0) {
+                        i += pReflect(p, fold1, 0.) / 2. + .5;
+                        if (subdivisions > 1) {
+                            pReflect(p, fold2, 0.);
+                            pReflect(p, fold3, 0.);
+                        }
+                    }
+                    return i;
+                }
+
+                mat3 rotationMatrix(vec3 axis, float angle) {
+                    axis = normalize(axis);
+                    float s = sin(angle);
+                    float c = cos(angle);
+                    float oc = 1.0 - c;
+                    return mat3(
+                        oc * axis.x * axis.x + c,           oc * axis.x * axis.y - axis.z * s,  oc * axis.z * axis.x + axis.y * s,
+                        oc * axis.x * axis.y + axis.z * s,  oc * axis.y * axis.y + c,           oc * axis.y * axis.z - axis.x * s,
+                        oc * axis.z * axis.x - axis.y * s,  oc * axis.y * axis.z + axis.x * s,  oc * axis.z * axis.z + c
+                    );
+                }
+
+                vec3 pRoll(inout vec3 p) {
+                    pR(p.yx, PI/3.);
+                    pR(p.yz, PI/-5.);
+                    mat3 m = rotationMatrix(normalize(icoF1a), t * ((PI*2.)/3.));
+                    p *= m;
+                    return p;
+                }
+
+                float fCone2(vec3 p, float radius, float height, vec3 direction) {
+                    p = reflect(p, normalize(mix(vec3(0,1,0), -direction, .5)));
+                    return fCone(p, radius, height);
+                }
+
+                float fHolePart(vec3 p, vec3 a, vec3 b, vec3 c, vec3 d, float round, float thick) {
+                    vec3 center = (a + b + c + d) / 4.;
+                    float f0 = fPlane(p, a, b, c, center, thick);
+                    float f1 = fPlane(p, a, c, d, center, thick);
+                    float f = f0;
+                    f = fOpIntersectionRound(f, f1, round);
+                    return f;
+                }
+
+                float fHole(vec3 p, vec3 a, vec3 b, vec3 c) {
+                    float w = 1.;
+                    float h = 1.;
+                    float round = .08;
+                    float thick = .02;
+
+                    vec3 AB = mix(a, b, 0.5);
+                    vec3 AAB = mix(a, b, w);
+                    vec3 ABB = mix(a, b, 1. - w);
+                    vec3 n = normalize(cross(a, b));
+                    vec3 cn = dot(c, n) * n;
+                    vec3 AF = c - cn * (1. - h);
+                    vec3 AF2 = reflect(AF, n);
+
+                    float part1 = fHolePart(p, vec3(0), AF2, AAB, AF, round, thick);
+                    float part2 = fHolePart(p, vec3(0), AF2, ABB, AF, round, thick);
+                    float hole = fOpIntersectionRound(part1, part2, round);
+                    return hole;
+                }
+
+                float holes(vec3 p, float i) {
+                    float d = 1000.;
+                    if (i > 0.) {
+                        return min(d, fHole(p, icoC1, icoB1, icoF1a));
+                    }
+                    d = min(d, fHole(p, icoC1, icoB1, icoF1a));
+                    d = min(d, fHole(p, icoA1, icoB1, icoF1a));
+                    return d;
+                }
+
+                float spikes(vec3 p) {
+                    float d = 1000.;
+                    d = min(d, fCone2(p, uSpikeWidth, uSpikeLength, icoF1a));
+                    d = min(d, fCone2(p, uSpikeWidth, uSpikeLength * 1.3, icoA1));
+                    d = min(d, fCone2(p, uSpikeWidth, uSpikeLength * 1.4, icoB1));
+                    return d;
+                }
+
+                float shell(vec3 p, float i) {
+                    float thick = uShellThickness;
+                    float round = .015;
+
+                    float d = length(p) - uSphereRadius;
+                    d = fOpUnionRound(d, spikes(p), uSmoothing);
+                    d = max(d, -(length(p) - (uSphereRadius - thick)));
+                    float h = holes(p, i);
+                    h = max(h, (length(p) - (uSphereRadius + 0.1)));
+                    d = fOpIntersectionRound(d, -h, round);
+                    return d;
+                }
+
+                float model(vec3 p) {
+                    pRoll(p);
+                    float d = 1000.;
+                    float i = 0.;
+                    i = pModIcosahedron(p, 1);
+                    d = min(d, shell(p, i));
+                    return d;
+                }
+
+                const float MAX_TRACE_DISTANCE = 10.0;
+                const float INTERSECTION_PRECISION = 0.001;
+                const int NUM_OF_TRACE_STEPS = 100;
+
+                vec2 map(vec3 p) {
+                    return vec2(model(p), 1.);
+                }
+
+                float softshadow(in vec3 ro, in vec3 rd, in float mint, in float tmax) {
+                    float res = 1.0;
+                    float t = mint;
+                    for(int i = 0; i < 16; i++) {
+                        float h = map(ro + rd*t).x;
+                        res = min(res, uShadowSoft * h / t);
+                        t += clamp(h, 0.02, 0.10);
+                        if(h < 0.001 || t > tmax) break;
+                    }
+                    return clamp(res, 0.0, 1.0);
+                }
+
+                float calcAO(in vec3 pos, in vec3 nor) {
+                    float occ = 0.0;
+                    float sca = 1.0;
+                    for(int i = 0; i < 5; i++) {
+                        float hr = 0.01 + 0.12 * float(i) / 4.0;
+                        vec3 aopos = nor * hr + pos;
+                        float dd = map(aopos).x;
+                        occ += -(dd - hr) * sca;
+                        sca *= 0.95;
+                    }
+                    return clamp(1.0 - 3.0 * occ, 0.0, 1.0);
+                }
+
+                const float GAMMA = 2.2;
+
+                vec3 gamma(vec3 color, float g) {
+                    return pow(color, vec3(g));
+                }
+
+                vec3 linearToScreen(vec3 linearRGB) {
+                    return gamma(linearRGB, 1.0 / GAMMA);
+                }
+
+                vec3 doLighting(vec3 col, vec3 pos, vec3 nor, vec3 ref, vec3 rd) {
+                    float occ = calcAO(pos, nor);
+                    vec3 lig = normalize(uLightDir);
+                    float amb = clamp(0.5 + 0.5 * nor.y, 0.0, 1.0);
+                    float dif = clamp(dot(nor, lig), 0.0, 1.0);
+                    float bac = clamp(dot(nor, normalize(vec3(-lig.x, 0.0, -lig.z))), 0.0, 1.0) * clamp(1.0 - pos.y, 0.0, 1.0);
+                    float fre = pow(clamp(1.0 + dot(nor, rd), 0.0, 1.0), 2.0);
+
+                    dif *= softshadow(pos, lig, 0.02, 2.5);
+
+                    vec3 lin = vec3(0.0);
+                    lin += uDiffuse * dif * uLightColor;
+                    lin += uAmbient * amb * uAmbientColor * occ;
+                    lin += 0.30 * bac * vec3(0.25) * occ;
+                    lin += 0.20 * fre * vec3(1.00) * occ;
+                    col = col * lin;
+
+                    return col;
+                }
+
+                vec2 calcIntersection(in vec3 ro, in vec3 rd) {
+                    float h = INTERSECTION_PRECISION * 2.0;
+                    float t = 0.0;
+                    float res = -1.0;
+                    float id = -1.;
+
+                    for(int i = 0; i < NUM_OF_TRACE_STEPS; i++) {
+                        if(h < INTERSECTION_PRECISION || t > MAX_TRACE_DISTANCE) break;
+                        vec2 m = map(ro + rd * t);
+                        h = m.x;
+                        t += h;
+                        id = m.y;
+                    }
+
+                    if(t < MAX_TRACE_DISTANCE) res = t;
+                    if(t > MAX_TRACE_DISTANCE) id = -1.0;
+
+                    return vec2(res, id);
+                }
+
+                mat3 calcLookAtMatrix(in vec3 ro, in vec3 ta, in float roll) {
+                    vec3 ww = normalize(ta - ro);
+                    vec3 uu = normalize(cross(ww, vec3(sin(roll), cos(roll), 0.0)));
+                    vec3 vv = normalize(cross(uu, ww));
+                    return mat3(uu, vv, ww);
+                }
+
+                void doCamera(out vec3 camPos, out vec3 camTar, in float time, in vec2 mouse) {
+                    vec3 orient = normalize(vec3(.1, uCamHeight, 0.));
+                    float zoom = uZoom;
+                    zoom -= mouse.y * 3.5;
+                    camPos = zoom * orient;
+                    camTar = vec3(0);
+                }
+
+                vec3 calcNormal(in vec3 pos) {
+                    vec3 eps = vec3(0.001, 0.0, 0.0);
+                    vec3 nor = vec3(
+                        map(pos + eps.xyy).x - map(pos - eps.xyy).x,
+                        map(pos + eps.yxy).x - map(pos - eps.yxy).x,
+                        map(pos + eps.yyx).x - map(pos - eps.yyx).x
+                    );
+                    return normalize(nor);
+                }
+
+                vec3 render(vec2 res, vec3 ro, vec3 rd) {
+                    vec3 color = uBgColor;
+
+                    if(res.y > -.5) {
+                        vec3 pos = ro + rd * res.x;
+                        vec3 norm = calcNormal(pos);
+                        vec3 ref = reflect(rd, norm);
+
+                        color = uObjectColor;
+                        color = doLighting(color, pos, norm, ref, rd);
+                    }
+
+                    return color;
+                }
+
+                void main() {
+                    t = (iTime * uSpeed + uTimeOffset);
+                    t = mod(t / 4., 1.);
+
+                    initIcosahedron();
+
+                    vec2 p = (-iResolution.xy + 2.0 * gl_FragCoord.xy) / iResolution.y;
+                    vec2 m = iMouse.xy / iResolution.xy;
+
+                    vec3 ro = vec3(0., 0., 2.);
+                    vec3 ta = vec3(0., 0., 0.);
+
+                    doCamera(ro, ta, iTime, m);
+
+                    mat3 camMat = calcLookAtMatrix(ro, ta, 0.0);
+                    vec3 rd = normalize(camMat * vec3(p.xy, uFov));
+
+                    vec2 res = calcIntersection(ro, rd);
+
+                    vec3 color = render(res, ro, rd);
+                    color = linearToScreen(color);
+
+                    gl_FragColor = vec4(color, 1.0);
+                }
+            `,
+
+            // Shader 1: Plasma Sphere
+            plasmaSphere: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                #define PI 3.14159265359
+
+                float noise(vec3 p) {
+                    return fract(sin(dot(p, vec3(12.9898, 78.233, 45.543))) * 43758.5453);
+                }
+
+                float sdSphere(vec3 p, float r) {
+                    return length(p) - r;
+                }
+
+                float plasma(vec3 p, float t) {
+                    float v = 0.0;
+                    v += sin(p.x * 10.0 + t);
+                    v += sin(p.y * 10.0 + t * 0.5);
+                    v += sin(p.z * 10.0 + t * 0.7);
+                    v += sin((p.x + p.y + p.z) * 5.0 + t * 2.0);
+                    return v * 0.1;
+                }
+
+                float map(vec3 p, float t) {
+                    float d = sdSphere(p, uSphereRadius);
+                    d += plasma(p, t) * uSpikeLength;
+                    return d;
+                }
+
+                vec3 calcNormal(vec3 p, float t) {
+                    vec2 e = vec2(0.001, 0.0);
+                    return normalize(vec3(
+                        map(p + e.xyy, t) - map(p - e.xyy, t),
+                        map(p + e.yxy, t) - map(p - e.yxy, t),
+                        map(p + e.yyx, t) - map(p - e.yyx, t)
+                    ));
+                }
+
+                void main() {
+                    float t = iTime * uSpeed + uTimeOffset;
+                    vec2 uv = (gl_FragCoord.xy * 2.0 - iResolution.xy) / iResolution.y;
+                    vec2 m = iMouse.xy / iResolution.xy;
+
+                    vec3 ro = vec3(0.0, 0.0, uZoom - m.y * 2.0);
+                    vec3 rd = normalize(vec3(uv, -uFov));
+
+                    float d = 0.0;
+                    vec3 p;
+
+                    for(int i = 0; i < 64; i++) {
+                        p = ro + rd * d;
+                        float h = map(p, t);
+                        if(h < 0.001 || d > 10.0) break;
+                        d += h;
+                    }
+
+                    vec3 col = uBgColor;
+
+                    if(d < 10.0) {
+                        vec3 n = calcNormal(p, t);
+                        vec3 l = normalize(uLightDir);
+                        float diff = max(dot(n, l), 0.0);
+                        float spec = pow(max(dot(reflect(-l, n), -rd), 0.0), 32.0);
+
+                        vec3 plasmaCol = 0.5 + 0.5 * cos(t + p * 2.0 + vec3(0, 2, 4));
+                        col = mix(uObjectColor, plasmaCol, 0.5);
+                        col = col * (uAmbient * uAmbientColor + uDiffuse * diff * uLightColor);
+                        col += spec * 0.5;
+                    }
+
+                    col = pow(col, vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 2: Fractal Orb
+            fractalOrb: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                #define PI 3.14159265359
+
+                vec3 fold(vec3 p) {
+                    p = abs(p);
+                    if(p.x < p.y) p.xy = p.yx;
+                    if(p.x < p.z) p.xz = p.zx;
+                    if(p.y < p.z) p.yz = p.zy;
+                    return p;
+                }
+
+                float fractal(vec3 p, float t) {
+                    float s = uSphereRadius;
+                    for(int i = 0; i < 8; i++) {
+                        p = fold(p);
+                        p = p * 2.0 - vec3(1.0 + uSpikeLength);
+                        p.xy *= mat2(cos(t * 0.1), sin(t * 0.1), -sin(t * 0.1), cos(t * 0.1));
+                        s *= 2.0;
+                    }
+                    return length(p) / s - uShellThickness;
+                }
+
+                vec3 calcNormal(vec3 p, float t) {
+                    vec2 e = vec2(0.001, 0.0);
+                    return normalize(vec3(
+                        fractal(p + e.xyy, t) - fractal(p - e.xyy, t),
+                        fractal(p + e.yxy, t) - fractal(p - e.yxy, t),
+                        fractal(p + e.yyx, t) - fractal(p - e.yyx, t)
+                    ));
+                }
+
+                void main() {
+                    float t = iTime * uSpeed + uTimeOffset;
+                    vec2 uv = (gl_FragCoord.xy * 2.0 - iResolution.xy) / iResolution.y;
+                    vec2 m = iMouse.xy / iResolution.xy;
+
+                    vec3 ro = vec3(0.0, uCamHeight - 1.0, uZoom - m.y * 2.0);
+                    vec3 rd = normalize(vec3(uv, -uFov));
+
+                    float d = 0.0;
+                    vec3 p;
+
+                    for(int i = 0; i < 100; i++) {
+                        p = ro + rd * d;
+                        float h = fractal(p, t);
+                        if(abs(h) < 0.0005 || d > 15.0) break;
+                        d += h * 0.5;
+                    }
+
+                    vec3 col = uBgColor;
+
+                    if(d < 15.0) {
+                        vec3 n = calcNormal(p, t);
+                        vec3 l = normalize(uLightDir);
+                        float diff = max(dot(n, l), 0.0);
+                        float ao = 1.0 - d * 0.05;
+
+                        col = uObjectColor;
+                        col = col * (uAmbient * uAmbientColor + uDiffuse * diff * uLightColor) * ao;
+                    }
+
+                    col = pow(col, vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 3: Crystal Matrix
+            crystalMatrix: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                #define PI 3.14159265359
+
+                float sdBox(vec3 p, vec3 b) {
+                    vec3 d = abs(p) - b;
+                    return length(max(d, 0.0)) + min(max(d.x, max(d.y, d.z)), 0.0);
+                }
+
+                float sdOctahedron(vec3 p, float s) {
+                    p = abs(p);
+                    return (p.x + p.y + p.z - s) * 0.57735027;
+                }
+
+                vec3 repeat(vec3 p, vec3 c) {
+                    return mod(p + 0.5 * c, c) - 0.5 * c;
+                }
+
+                float map(vec3 p, float t) {
+                    vec3 q = repeat(p, vec3(2.0 * uSphereRadius));
+
+                    float oct = sdOctahedron(q, uSpikeLength * 0.5);
+                    float box = sdBox(q, vec3(uSpikeWidth));
+
+                    float d = max(oct, -box);
+
+                    q.xy *= mat2(cos(t), sin(t), -sin(t), cos(t));
+                    float oct2 = sdOctahedron(q, uSpikeLength * 0.3);
+                    d = min(d, oct2);
+
+                    return d * 0.5;
+                }
+
+                vec3 calcNormal(vec3 p, float t) {
+                    vec2 e = vec2(0.001, 0.0);
+                    return normalize(vec3(
+                        map(p + e.xyy, t) - map(p - e.xyy, t),
+                        map(p + e.yxy, t) - map(p - e.yxy, t),
+                        map(p + e.yyx, t) - map(p - e.yyx, t)
+                    ));
+                }
+
+                void main() {
+                    float t = iTime * uSpeed + uTimeOffset;
+                    vec2 uv = (gl_FragCoord.xy * 2.0 - iResolution.xy) / iResolution.y;
+                    vec2 m = iMouse.xy / iResolution.xy;
+
+                    vec3 ro = vec3(sin(t * 0.2) * 3.0, uCamHeight, cos(t * 0.2) * 3.0 + uZoom);
+                    vec3 ta = vec3(0.0);
+                    vec3 ww = normalize(ta - ro);
+                    vec3 uu = normalize(cross(ww, vec3(0.0, 1.0, 0.0)));
+                    vec3 vv = cross(uu, ww);
+                    vec3 rd = normalize(uv.x * uu + uv.y * vv + uFov * ww);
+
+                    float d = 0.0;
+                    vec3 p;
+
+                    for(int i = 0; i < 80; i++) {
+                        p = ro + rd * d;
+                        float h = map(p, t);
+                        if(h < 0.001 || d > 20.0) break;
+                        d += h;
+                    }
+
+                    vec3 col = uBgColor;
+
+                    if(d < 20.0) {
+                        vec3 n = calcNormal(p, t);
+                        vec3 l = normalize(uLightDir);
+                        float diff = max(dot(n, l), 0.0);
+                        float spec = pow(max(dot(reflect(-l, n), -rd), 0.0), 64.0);
+                        float fres = pow(1.0 - abs(dot(n, rd)), 3.0);
+
+                        col = uObjectColor;
+                        col = col * (uAmbient * uAmbientColor + uDiffuse * diff * uLightColor);
+                        col += spec * uLightColor * 0.5;
+                        col += fres * uAmbientColor * 0.3;
+                    }
+
+                    col = pow(col, vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 4: Neon Wireframe
+            neonWireframe: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                #define PI 3.14159265359
+
+                float sdTorus(vec3 p, vec2 t) {
+                    vec2 q = vec2(length(p.xz) - t.x, p.y);
+                    return length(q) - t.y;
+                }
+
+                float sdCappedCylinder(vec3 p, float h, float r) {
+                    vec2 d = abs(vec2(length(p.xz), p.y)) - vec2(r, h);
+                    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+                }
+
+                mat2 rot(float a) {
+                    float c = cos(a), s = sin(a);
+                    return mat2(c, -s, s, c);
+                }
+
+                float map(vec3 p, float t) {
+                    p.xy *= rot(t * 0.3);
+                    p.yz *= rot(t * 0.2);
+
+                    float d = 1e10;
+
+                    // Main torus
+                    d = min(d, sdTorus(p, vec2(uSphereRadius, uSpikeWidth)));
+
+                    // Rotated tori
+                    vec3 p2 = p;
+                    p2.xz *= rot(PI * 0.5);
+                    d = min(d, sdTorus(p2, vec2(uSphereRadius, uSpikeWidth)));
+
+                    vec3 p3 = p;
+                    p3.xy *= rot(PI * 0.5);
+                    d = min(d, sdTorus(p3, vec2(uSphereRadius, uSpikeWidth)));
+
+                    // Spokes
+                    for(int i = 0; i < 6; i++) {
+                        vec3 q = p;
+                        q.xz *= rot(float(i) * PI / 3.0);
+                        d = min(d, sdCappedCylinder(q - vec3(0, 0, 0), uSphereRadius * 1.2, uSpikeWidth * 0.5));
+                    }
+
+                    return d;
+                }
+
+                vec3 calcNormal(vec3 p, float t) {
+                    vec2 e = vec2(0.001, 0.0);
+                    return normalize(vec3(
+                        map(p + e.xyy, t) - map(p - e.xyy, t),
+                        map(p + e.yxy, t) - map(p - e.yxy, t),
+                        map(p + e.yyx, t) - map(p - e.yyx, t)
+                    ));
+                }
+
+                float glow(float d) {
+                    return uSmoothing / (abs(d) + uSmoothing);
+                }
+
+                void main() {
+                    float t = iTime * uSpeed + uTimeOffset;
+                    vec2 uv = (gl_FragCoord.xy * 2.0 - iResolution.xy) / iResolution.y;
+                    vec2 m = iMouse.xy / iResolution.xy;
+
+                    vec3 ro = vec3(0.0, uCamHeight - 1.0, uZoom - m.y * 2.0);
+                    vec3 rd = normalize(vec3(uv, -uFov));
+
+                    float d = 0.0;
+                    vec3 p;
+                    float glowAccum = 0.0;
+
+                    for(int i = 0; i < 80; i++) {
+                        p = ro + rd * d;
+                        float h = map(p, t);
+                        glowAccum += glow(h) * 0.02;
+                        if(h < 0.001 || d > 15.0) break;
+                        d += h;
+                    }
+
+                    vec3 col = uBgColor;
+
+                    // Add glow
+                    col += uObjectColor * glowAccum * 0.5;
+                    col += uLightColor * glowAccum * 0.3;
+
+                    if(d < 15.0) {
+                        vec3 n = calcNormal(p, t);
+                        vec3 l = normalize(uLightDir);
+                        float diff = max(dot(n, l), 0.0);
+                        float fres = pow(1.0 - abs(dot(n, rd)), 2.0);
+
+                        col = uObjectColor * 2.0;
+                        col += fres * uLightColor;
+                    }
+
+                    col = pow(col, vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `
+        };
+
+        // ============================================
+        // PRESETS DATA
+        // ============================================
+
+        const presets = {
+            0: [ // Icosahedron
+                { name: 'Default', speed: 1, timeOffset: 0, zoom: 4, fov: 2, camHeight: 1, spikeLength: 1.3, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.12, lightX: -0.6, lightY: 0.7, lightZ: 0.5, ambient: 0.8, diffuse: 1.2, shadowSoft: 8, objectColor: '#808080', lightColor: '#f2cc99', ambientColor: '#80b3cc', bgColor: '#0a0b0d' },
+                { name: 'Alien', speed: 0.5, timeOffset: 0, zoom: 3.5, fov: 2.2, camHeight: 1.2, spikeLength: 2, spikeWidth: 0.03, shellThickness: 0.02, sphereRadius: 0.8, smoothing: 0.08, lightX: -0.3, lightY: 0.8, lightZ: 0.6, ambient: 1, diffuse: 1.5, shadowSoft: 12, objectColor: '#2a5a3a', lightColor: '#66ff99', ambientColor: '#003322', bgColor: '#000505' },
+                { name: 'Crystal', speed: 0.3, timeOffset: 0, zoom: 3, fov: 1.8, camHeight: 0.8, spikeLength: 1.8, spikeWidth: 0.02, shellThickness: 0.015, sphereRadius: 1.2, smoothing: 0.05, lightX: 0.5, lightY: 0.9, lightZ: -0.3, ambient: 1.2, diffuse: 2, shadowSoft: 15, objectColor: '#88ccff', lightColor: '#ffffff', ambientColor: '#4488cc', bgColor: '#0a1020' },
+                { name: 'Fire', speed: 1.5, timeOffset: 0, zoom: 4.5, fov: 2, camHeight: 1, spikeLength: 1.5, spikeWidth: 0.08, shellThickness: 0.04, sphereRadius: 0.9, smoothing: 0.15, lightX: -0.4, lightY: 0.5, lightZ: 0.7, ambient: 0.6, diffuse: 1.8, shadowSoft: 6, objectColor: '#ff4422', lightColor: '#ffaa44', ambientColor: '#440000', bgColor: '#100500' },
+                { name: 'Ice', speed: 0.2, timeOffset: 0, zoom: 3.8, fov: 2.5, camHeight: 1.5, spikeLength: 2.2, spikeWidth: 0.015, shellThickness: 0.01, sphereRadius: 1.1, smoothing: 0.03, lightX: 0.7, lightY: 0.6, lightZ: 0.4, ambient: 1.5, diffuse: 0.8, shadowSoft: 20, objectColor: '#aaddff', lightColor: '#eeffff', ambientColor: '#6699bb', bgColor: '#051015' },
+                { name: 'Neon', speed: 2, timeOffset: 0, zoom: 5, fov: 1.5, camHeight: 0.5, spikeLength: 1, spikeWidth: 0.1, shellThickness: 0.05, sphereRadius: 1.3, smoothing: 0.2, lightX: -0.8, lightY: 0.3, lightZ: 0.5, ambient: 0.4, diffuse: 2.5, shadowSoft: 4, objectColor: '#ff00ff', lightColor: '#00ffff', ambientColor: '#ff0088', bgColor: '#050005' },
+                { name: 'Void', speed: 0.1, timeOffset: 5, zoom: 6, fov: 3, camHeight: 2, spikeLength: 0.5, spikeWidth: 0.12, shellThickness: 0.08, sphereRadius: 1.5, smoothing: 0.25, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.3, diffuse: 0.5, shadowSoft: 2, objectColor: '#222233', lightColor: '#444466', ambientColor: '#111122', bgColor: '#000000' },
+                { name: 'Gold', speed: 0.8, timeOffset: 0, zoom: 4, fov: 2, camHeight: 1, spikeLength: 1.4, spikeWidth: 0.06, shellThickness: 0.035, sphereRadius: 1, smoothing: 0.1, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.7, diffuse: 1.4, shadowSoft: 10, objectColor: '#cc9944', lightColor: '#ffeecc', ambientColor: '#664422', bgColor: '#0a0805' },
+                { name: 'Matrix', speed: 1.2, timeOffset: 2, zoom: 3.5, fov: 2.2, camHeight: 0.8, spikeLength: 1.6, spikeWidth: 0.04, shellThickness: 0.025, sphereRadius: 0.95, smoothing: 0.08, lightX: -0.2, lightY: 0.9, lightZ: 0.4, ambient: 0.9, diffuse: 1.6, shadowSoft: 8, objectColor: '#00ff00', lightColor: '#88ff88', ambientColor: '#003300', bgColor: '#000800' }
+            ],
+            1: [ // Plasma Sphere
+                { name: 'Default', speed: 1, timeOffset: 0, zoom: 4, fov: 2, camHeight: 1, spikeLength: 0.3, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.12, lightX: -0.6, lightY: 0.7, lightZ: 0.5, ambient: 0.8, diffuse: 1.2, shadowSoft: 8, objectColor: '#ff6688', lightColor: '#ffccdd', ambientColor: '#6644aa', bgColor: '#0a0510' },
+                { name: 'Alien', speed: 1.5, timeOffset: 0, zoom: 3.5, fov: 2, camHeight: 1, spikeLength: 0.5, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1.2, smoothing: 0.12, lightX: -0.6, lightY: 0.7, lightZ: 0.5, ambient: 1, diffuse: 1.5, shadowSoft: 8, objectColor: '#44ff88', lightColor: '#aaffcc', ambientColor: '#226644', bgColor: '#000a05' },
+                { name: 'Crystal', speed: 0.5, timeOffset: 0, zoom: 4.5, fov: 2.5, camHeight: 1, spikeLength: 0.2, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 0.8, smoothing: 0.12, lightX: 0.5, lightY: 0.8, lightZ: -0.3, ambient: 1.2, diffuse: 1.8, shadowSoft: 12, objectColor: '#88ccff', lightColor: '#ffffff', ambientColor: '#4488aa', bgColor: '#050a15' },
+                { name: 'Fire', speed: 2, timeOffset: 0, zoom: 3.8, fov: 1.8, camHeight: 1, spikeLength: 0.4, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1.1, smoothing: 0.15, lightX: -0.4, lightY: 0.5, lightZ: 0.7, ambient: 0.6, diffuse: 2, shadowSoft: 6, objectColor: '#ff4400', lightColor: '#ffaa66', ambientColor: '#661100', bgColor: '#0a0300' },
+                { name: 'Ice', speed: 0.3, timeOffset: 0, zoom: 5, fov: 2.2, camHeight: 1, spikeLength: 0.15, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 0.9, smoothing: 0.08, lightX: 0.6, lightY: 0.7, lightZ: 0.4, ambient: 1.4, diffuse: 1, shadowSoft: 15, objectColor: '#aaeeff', lightColor: '#ffffff', ambientColor: '#4488bb', bgColor: '#000810' },
+                { name: 'Neon', speed: 3, timeOffset: 0, zoom: 3, fov: 1.5, camHeight: 1, spikeLength: 0.6, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1.3, smoothing: 0.2, lightX: -0.8, lightY: 0.4, lightZ: 0.5, ambient: 0.5, diffuse: 2.5, shadowSoft: 4, objectColor: '#ff00ff', lightColor: '#00ffff', ambientColor: '#880088', bgColor: '#050008' },
+                { name: 'Void', speed: 0.2, timeOffset: 3, zoom: 6, fov: 3, camHeight: 1, spikeLength: 0.1, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1.5, smoothing: 0.05, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.3, diffuse: 0.4, shadowSoft: 2, objectColor: '#333344', lightColor: '#555566', ambientColor: '#222233', bgColor: '#000000' },
+                { name: 'Gold', speed: 0.8, timeOffset: 0, zoom: 4.2, fov: 2, camHeight: 1, spikeLength: 0.35, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.1, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.7, diffuse: 1.4, shadowSoft: 10, objectColor: '#ddaa44', lightColor: '#ffeeaa', ambientColor: '#886622', bgColor: '#080500' },
+                { name: 'Matrix', speed: 1.5, timeOffset: 1, zoom: 3.8, fov: 2, camHeight: 1, spikeLength: 0.4, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.12, lightX: -0.3, lightY: 0.8, lightZ: 0.5, ambient: 0.8, diffuse: 1.6, shadowSoft: 8, objectColor: '#00ff44', lightColor: '#88ffaa', ambientColor: '#004411', bgColor: '#000500' }
+            ],
+            2: [ // Fractal Orb
+                { name: 'Default', speed: 1, timeOffset: 0, zoom: 4, fov: 2, camHeight: 1, spikeLength: 1, spikeWidth: 0.05, shellThickness: 0.02, sphereRadius: 1, smoothing: 0.12, lightX: -0.6, lightY: 0.7, lightZ: 0.5, ambient: 0.8, diffuse: 1.2, shadowSoft: 8, objectColor: '#8866aa', lightColor: '#ddbbff', ambientColor: '#443366', bgColor: '#080510' },
+                { name: 'Alien', speed: 0.8, timeOffset: 0, zoom: 3.5, fov: 2.2, camHeight: 1.2, spikeLength: 1.2, spikeWidth: 0.05, shellThickness: 0.015, sphereRadius: 0.9, smoothing: 0.1, lightX: -0.4, lightY: 0.8, lightZ: 0.5, ambient: 1, diffuse: 1.4, shadowSoft: 10, objectColor: '#44aa66', lightColor: '#88ffaa', ambientColor: '#224433', bgColor: '#000805' },
+                { name: 'Crystal', speed: 0.5, timeOffset: 0, zoom: 4.5, fov: 1.8, camHeight: 0.8, spikeLength: 0.8, spikeWidth: 0.05, shellThickness: 0.01, sphereRadius: 1.1, smoothing: 0.08, lightX: 0.5, lightY: 0.9, lightZ: -0.2, ambient: 1.3, diffuse: 1.8, shadowSoft: 15, objectColor: '#aaccff', lightColor: '#ffffff', ambientColor: '#5577aa', bgColor: '#050a18' },
+                { name: 'Fire', speed: 1.5, timeOffset: 0, zoom: 3.8, fov: 2, camHeight: 1, spikeLength: 1.3, spikeWidth: 0.05, shellThickness: 0.025, sphereRadius: 0.85, smoothing: 0.15, lightX: -0.5, lightY: 0.5, lightZ: 0.7, ambient: 0.6, diffuse: 2, shadowSoft: 5, objectColor: '#ff5522', lightColor: '#ffbb66', ambientColor: '#551100', bgColor: '#0a0300' },
+                { name: 'Ice', speed: 0.3, timeOffset: 0, zoom: 5, fov: 2.5, camHeight: 1.5, spikeLength: 0.7, spikeWidth: 0.05, shellThickness: 0.008, sphereRadius: 1.2, smoothing: 0.05, lightX: 0.7, lightY: 0.6, lightZ: 0.4, ambient: 1.5, diffuse: 0.9, shadowSoft: 18, objectColor: '#bbddff', lightColor: '#ffffff', ambientColor: '#7799bb', bgColor: '#030810' },
+                { name: 'Neon', speed: 2, timeOffset: 0, zoom: 3, fov: 1.5, camHeight: 0.5, spikeLength: 1.5, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1.3, smoothing: 0.2, lightX: -0.8, lightY: 0.3, lightZ: 0.5, ambient: 0.4, diffuse: 2.5, shadowSoft: 3, objectColor: '#ff00aa', lightColor: '#00ffcc', ambientColor: '#880055', bgColor: '#050005' },
+                { name: 'Void', speed: 0.15, timeOffset: 5, zoom: 6, fov: 3, camHeight: 2, spikeLength: 0.5, spikeWidth: 0.05, shellThickness: 0.005, sphereRadius: 1.5, smoothing: 0.02, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.25, diffuse: 0.4, shadowSoft: 1, objectColor: '#222233', lightColor: '#444455', ambientColor: '#111122', bgColor: '#000000' },
+                { name: 'Gold', speed: 0.7, timeOffset: 0, zoom: 4.2, fov: 2, camHeight: 1, spikeLength: 0.9, spikeWidth: 0.05, shellThickness: 0.018, sphereRadius: 1, smoothing: 0.1, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.7, diffuse: 1.5, shadowSoft: 10, objectColor: '#ccaa55', lightColor: '#ffeebb', ambientColor: '#775522', bgColor: '#080503' },
+                { name: 'Matrix', speed: 1.2, timeOffset: 2, zoom: 3.8, fov: 2.2, camHeight: 0.8, spikeLength: 1.1, spikeWidth: 0.05, shellThickness: 0.015, sphereRadius: 0.95, smoothing: 0.08, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.85, diffuse: 1.6, shadowSoft: 8, objectColor: '#00dd44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000600' }
+            ],
+            3: [ // Crystal Matrix (same preset structure)
+                { name: 'Default', speed: 1, timeOffset: 0, zoom: 4, fov: 2, camHeight: 1, spikeLength: 0.5, spikeWidth: 0.08, shellThickness: 0.03, sphereRadius: 2, smoothing: 0.12, lightX: -0.6, lightY: 0.7, lightZ: 0.5, ambient: 0.8, diffuse: 1.2, shadowSoft: 8, objectColor: '#66aacc', lightColor: '#aaddff', ambientColor: '#335566', bgColor: '#050810' },
+                { name: 'Alien', speed: 1.2, timeOffset: 0, zoom: 3.5, fov: 2.2, camHeight: 1.2, spikeLength: 0.6, spikeWidth: 0.06, shellThickness: 0.02, sphereRadius: 1.8, smoothing: 0.1, lightX: -0.4, lightY: 0.8, lightZ: 0.5, ambient: 1, diffuse: 1.5, shadowSoft: 10, objectColor: '#44cc88', lightColor: '#88ffbb', ambientColor: '#225544', bgColor: '#000a08' },
+                { name: 'Crystal', speed: 0.6, timeOffset: 0, zoom: 4.5, fov: 1.8, camHeight: 0.8, spikeLength: 0.4, spikeWidth: 0.04, shellThickness: 0.015, sphereRadius: 2.2, smoothing: 0.06, lightX: 0.5, lightY: 0.9, lightZ: -0.2, ambient: 1.4, diffuse: 1.8, shadowSoft: 15, objectColor: '#99ccff', lightColor: '#ffffff', ambientColor: '#4477aa', bgColor: '#030815' },
+                { name: 'Fire', speed: 1.8, timeOffset: 0, zoom: 3.8, fov: 2, camHeight: 1, spikeLength: 0.7, spikeWidth: 0.1, shellThickness: 0.04, sphereRadius: 1.6, smoothing: 0.18, lightX: -0.5, lightY: 0.5, lightZ: 0.7, ambient: 0.5, diffuse: 2.2, shadowSoft: 5, objectColor: '#ff6633', lightColor: '#ffcc88', ambientColor: '#662200', bgColor: '#0a0400' },
+                { name: 'Ice', speed: 0.4, timeOffset: 0, zoom: 5, fov: 2.5, camHeight: 1.5, spikeLength: 0.35, spikeWidth: 0.03, shellThickness: 0.01, sphereRadius: 2.4, smoothing: 0.04, lightX: 0.7, lightY: 0.6, lightZ: 0.4, ambient: 1.6, diffuse: 0.8, shadowSoft: 18, objectColor: '#aaddff', lightColor: '#ffffff', ambientColor: '#6699cc', bgColor: '#020610' },
+                { name: 'Neon', speed: 2.5, timeOffset: 0, zoom: 3, fov: 1.5, camHeight: 0.5, spikeLength: 0.8, spikeWidth: 0.12, shellThickness: 0.05, sphereRadius: 1.5, smoothing: 0.22, lightX: -0.8, lightY: 0.3, lightZ: 0.5, ambient: 0.3, diffuse: 2.8, shadowSoft: 3, objectColor: '#ff44ff', lightColor: '#44ffff', ambientColor: '#880088', bgColor: '#080008' },
+                { name: 'Void', speed: 0.2, timeOffset: 4, zoom: 6, fov: 3, camHeight: 2, spikeLength: 0.25, spikeWidth: 0.15, shellThickness: 0.08, sphereRadius: 3, smoothing: 0.25, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.2, diffuse: 0.35, shadowSoft: 1, objectColor: '#333344', lightColor: '#555566', ambientColor: '#222233', bgColor: '#000000' },
+                { name: 'Gold', speed: 0.9, timeOffset: 0, zoom: 4.2, fov: 2, camHeight: 1, spikeLength: 0.55, spikeWidth: 0.07, shellThickness: 0.025, sphereRadius: 2, smoothing: 0.1, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.7, diffuse: 1.4, shadowSoft: 10, objectColor: '#ddbb66', lightColor: '#ffeecc', ambientColor: '#886633', bgColor: '#0a0805' },
+                { name: 'Matrix', speed: 1.4, timeOffset: 1.5, zoom: 3.8, fov: 2.2, camHeight: 0.8, spikeLength: 0.65, spikeWidth: 0.05, shellThickness: 0.02, sphereRadius: 1.9, smoothing: 0.08, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.85, diffuse: 1.7, shadowSoft: 8, objectColor: '#22ff55', lightColor: '#99ffaa', ambientColor: '#004422', bgColor: '#000800' }
+            ],
+            4: [ // Neon Wireframe
+                { name: 'Default', speed: 1, timeOffset: 0, zoom: 4, fov: 2, camHeight: 1, spikeLength: 1, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.1, lightX: -0.6, lightY: 0.7, lightZ: 0.5, ambient: 0.8, diffuse: 1.2, shadowSoft: 8, objectColor: '#ff00ff', lightColor: '#00ffff', ambientColor: '#880088', bgColor: '#050008' },
+                { name: 'Alien', speed: 1.3, timeOffset: 0, zoom: 3.5, fov: 2.2, camHeight: 1.2, spikeLength: 1, spikeWidth: 0.04, shellThickness: 0.025, sphereRadius: 0.9, smoothing: 0.08, lightX: -0.4, lightY: 0.8, lightZ: 0.5, ambient: 1, diffuse: 1.5, shadowSoft: 10, objectColor: '#00ff88', lightColor: '#88ffcc', ambientColor: '#004422', bgColor: '#000808' },
+                { name: 'Crystal', speed: 0.5, timeOffset: 0, zoom: 4.5, fov: 1.8, camHeight: 0.8, spikeLength: 1, spikeWidth: 0.03, shellThickness: 0.015, sphereRadius: 1.1, smoothing: 0.05, lightX: 0.5, lightY: 0.9, lightZ: -0.2, ambient: 1.3, diffuse: 1.8, shadowSoft: 15, objectColor: '#88ddff', lightColor: '#ffffff', ambientColor: '#4488bb', bgColor: '#030812' },
+                { name: 'Fire', speed: 2, timeOffset: 0, zoom: 3.8, fov: 2, camHeight: 1, spikeLength: 1, spikeWidth: 0.07, shellThickness: 0.04, sphereRadius: 0.85, smoothing: 0.15, lightX: -0.5, lightY: 0.5, lightZ: 0.7, ambient: 0.5, diffuse: 2.2, shadowSoft: 5, objectColor: '#ff4400', lightColor: '#ffaa44', ambientColor: '#551100', bgColor: '#080200' },
+                { name: 'Ice', speed: 0.3, timeOffset: 0, zoom: 5, fov: 2.5, camHeight: 1.5, spikeLength: 1, spikeWidth: 0.02, shellThickness: 0.01, sphereRadius: 1.2, smoothing: 0.03, lightX: 0.7, lightY: 0.6, lightZ: 0.4, ambient: 1.5, diffuse: 0.8, shadowSoft: 18, objectColor: '#aaeeff', lightColor: '#ffffff', ambientColor: '#5599bb', bgColor: '#020610' },
+                { name: 'Neon', speed: 2.5, timeOffset: 0, zoom: 3, fov: 1.5, camHeight: 0.5, spikeLength: 1, spikeWidth: 0.08, shellThickness: 0.05, sphereRadius: 1.3, smoothing: 0.2, lightX: -0.8, lightY: 0.3, lightZ: 0.5, ambient: 0.3, diffuse: 3, shadowSoft: 3, objectColor: '#ff00aa', lightColor: '#00ffaa', ambientColor: '#880055', bgColor: '#080005' },
+                { name: 'Void', speed: 0.15, timeOffset: 5, zoom: 6, fov: 3, camHeight: 2, spikeLength: 1, spikeWidth: 0.1, shellThickness: 0.08, sphereRadius: 1.5, smoothing: 0.25, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.2, diffuse: 0.3, shadowSoft: 1, objectColor: '#444466', lightColor: '#666688', ambientColor: '#222244', bgColor: '#000000' },
+                { name: 'Gold', speed: 0.8, timeOffset: 0, zoom: 4.2, fov: 2, camHeight: 1, spikeLength: 1, spikeWidth: 0.055, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.1, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.7, diffuse: 1.4, shadowSoft: 10, objectColor: '#ffaa00', lightColor: '#ffddaa', ambientColor: '#884400', bgColor: '#080500' },
+                { name: 'Matrix', speed: 1.5, timeOffset: 2, zoom: 3.8, fov: 2.2, camHeight: 0.8, spikeLength: 1, spikeWidth: 0.045, shellThickness: 0.025, sphereRadius: 0.95, smoothing: 0.08, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.85, diffuse: 1.7, shadowSoft: 8, objectColor: '#00ff00', lightColor: '#88ff88', ambientColor: '#003300', bgColor: '#000600' }
+            ]
+        };
+
+        const shaderNames = ['Icosahedron Spikes', 'Plasma Sphere', 'Fractal Orb', 'Crystal Matrix', 'Neon Wireframe'];
+
+        // ============================================
+        // WEBGL SETUP
+        // ============================================
+
+        let currentShader = 0;
+        let currentPreset = 0;
+        let program = null;
+        let paused = false;
+        let time = 0;
+        let lastTime = performance.now();
+        let frameCount = 0;
+        let fps = 60;
+        let mouseX = 0, mouseY = 0, mouseDown = 0;
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        function createProgram(gl, vertexSource, fragmentSource) {
+            const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexSource);
+            const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+
+            if (!vertexShader || !fragmentShader) return null;
+
+            const program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error('Program link error:', gl.getProgramInfoLog(program));
+                return null;
+            }
+            return program;
+        }
+
+        function resizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+        }
+
+        function initWebGL() {
+            resizeCanvas();
+
+            // Create fullscreen quad
+            const positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
+            const buffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+            gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+
+            switchShader(0);
+        }
+
+        function switchShader(index) {
+            currentShader = index;
+            const shaderSources = [
+                shaders.icosahedron,
+                shaders.plasmaSphere,
+                shaders.fractalOrb,
+                shaders.crystalMatrix,
+                shaders.neonWireframe
+            ];
+
+            if (program) gl.deleteProgram(program);
+            program = createProgram(gl, vertexShaderSource, shaderSources[index]);
+
+            if (program) {
+                gl.useProgram(program);
+                const posLoc = gl.getAttribLocation(program, 'a_position');
+                gl.enableVertexAttribArray(posLoc);
+                gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+            }
+
+            updatePresetIndicator();
+        }
+
+        // ============================================
+        // UI FUNCTIONS
+        // ============================================
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16) / 255,
+                g: parseInt(result[2], 16) / 255,
+                b: parseInt(result[3], 16) / 255
+            } : { r: 0.5, g: 0.5, b: 0.5 };
+        }
+
+        function getSliderValue(id) {
+            return parseFloat(document.getElementById(id).value);
+        }
+
+        function getColorValue(id) {
+            return hexToRgb(document.getElementById(id).value);
+        }
+
+        function updateSlider(id, value, min, max) {
+            const slider = document.getElementById(id);
+            const valueDisplay = document.getElementById(id + 'Value');
+            const fill = document.getElementById(id + 'Fill');
+
+            slider.value = value;
+            valueDisplay.textContent = value.toFixed(2);
+            const percent = ((value - min) / (max - min)) * 100;
+            fill.style.width = percent + '%';
+        }
+
+        function updateColor(id, value) {
+            document.getElementById(id).value = value;
+            document.getElementById(id + 'Hex').textContent = value.toUpperCase();
+        }
+
+        function applyPreset(presetIndex) {
+            currentPreset = presetIndex;
+            const preset = presets[currentShader][presetIndex];
+
+            // Update sliders
+            updateSlider('speed', preset.speed, 0, 3);
+            updateSlider('timeOffset', preset.timeOffset, 0, 10);
+            updateSlider('zoom', preset.zoom, 1, 10);
+            updateSlider('fov', preset.fov, 0.5, 5);
+            updateSlider('camHeight', preset.camHeight, 0, 2);
+            updateSlider('spikeLength', preset.spikeLength, 0, 3);
+            updateSlider('spikeWidth', preset.spikeWidth, 0.01, 0.3);
+            updateSlider('shellThickness', preset.shellThickness, 0.01, 0.2);
+            updateSlider('sphereRadius', preset.sphereRadius, 0.5, 2);
+            updateSlider('smoothing', preset.smoothing, 0, 0.5);
+            updateSlider('lightX', preset.lightX, -1, 1);
+            updateSlider('lightY', preset.lightY, -1, 1);
+            updateSlider('lightZ', preset.lightZ, -1, 1);
+            updateSlider('ambient', preset.ambient, 0, 2);
+            updateSlider('diffuse', preset.diffuse, 0, 3);
+            updateSlider('shadowSoft', preset.shadowSoft, 1, 20);
+
+            // Update colors
+            updateColor('objectColor', preset.objectColor);
+            updateColor('lightColor', preset.lightColor);
+            updateColor('ambientColor', preset.ambientColor);
+            updateColor('bgColor', preset.bgColor);
+
+            // Update preset buttons
+            document.querySelectorAll('.preset-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', i === presetIndex);
+            });
+
+            updatePresetIndicator();
+        }
+
+        function updatePresetIndicator() {
+            const indicator = document.getElementById('presetIndicator');
+            indicator.textContent = `${shaderNames[currentShader]} | ${presets[currentShader][currentPreset].name}`;
+        }
+
+        function setupSliderListeners() {
+            const sliders = [
+                'speed', 'timeOffset', 'zoom', 'fov', 'camHeight',
+                'spikeLength', 'spikeWidth', 'shellThickness', 'sphereRadius', 'smoothing',
+                'lightX', 'lightY', 'lightZ', 'ambient', 'diffuse', 'shadowSoft'
+            ];
+
+            sliders.forEach(id => {
+                const slider = document.getElementById(id);
+                slider.addEventListener('input', () => {
+                    const value = parseFloat(slider.value);
+                    document.getElementById(id + 'Value').textContent = value.toFixed(2);
+                    const min = parseFloat(slider.min);
+                    const max = parseFloat(slider.max);
+                    const percent = ((value - min) / (max - min)) * 100;
+                    document.getElementById(id + 'Fill').style.width = percent + '%';
+                });
+            });
+
+            // Color pickers
+            ['objectColor', 'lightColor', 'ambientColor', 'bgColor'].forEach(id => {
+                document.getElementById(id).addEventListener('input', (e) => {
+                    document.getElementById(id + 'Hex').textContent = e.target.value.toUpperCase();
+                });
+            });
+        }
+
+        function setupEventListeners() {
+            // Shader selector
+            document.getElementById('shaderSelect').addEventListener('change', (e) => {
+                switchShader(parseInt(e.target.value));
+                applyPreset(0);
+            });
+
+            // Preset buttons
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    applyPreset(parseInt(btn.dataset.preset));
+                });
+            });
+
+            // Pause toggle
+            document.getElementById('pauseToggle').addEventListener('click', function() {
+                paused = !paused;
+                this.classList.toggle('active', paused);
+            });
+
+            // Reset button
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                applyPreset(currentPreset);
+            });
+
+            // Export button
+            document.getElementById('exportBtn').addEventListener('click', () => {
+                exportShader();
+            });
+
+            // Random button
+            document.getElementById('randomBtn').addEventListener('click', randomize);
+
+            // Screenshot button
+            document.getElementById('screenshotBtn').addEventListener('click', takeScreenshot);
+
+            // Modal
+            document.getElementById('modalClose').addEventListener('click', () => {
+                document.getElementById('exportModal').classList.remove('active');
+            });
+
+            document.getElementById('copyBtn').addEventListener('click', () => {
+                navigator.clipboard.writeText(document.getElementById('exportCode').textContent);
+                document.getElementById('copyBtn').textContent = 'Copied!';
+                setTimeout(() => {
+                    document.getElementById('copyBtn').textContent = 'Copy to Clipboard';
+                }, 2000);
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    paused = !paused;
+                    document.getElementById('pauseToggle').classList.toggle('active', paused);
+                } else if (e.code === 'KeyR') {
+                    applyPreset(currentPreset);
+                } else if (e.code === 'KeyS') {
+                    takeScreenshot();
+                }
+            });
+
+            // Mouse events
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                mouseX = e.clientX - rect.left;
+                mouseY = rect.height - (e.clientY - rect.top);
+            });
+
+            canvas.addEventListener('mousedown', () => mouseDown = 1);
+            canvas.addEventListener('mouseup', () => mouseDown = 0);
+
+            // Resize
+            window.addEventListener('resize', resizeCanvas);
+        }
+
+        function randomize() {
+            const randRange = (min, max) => Math.random() * (max - min) + min;
+            const randColor = () => '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+
+            updateSlider('speed', randRange(0.1, 2), 0, 3);
+            updateSlider('timeOffset', randRange(0, 5), 0, 10);
+            updateSlider('zoom', randRange(2, 6), 1, 10);
+            updateSlider('fov', randRange(1, 3), 0.5, 5);
+            updateSlider('camHeight', randRange(0.5, 1.5), 0, 2);
+            updateSlider('spikeLength', randRange(0.5, 2), 0, 3);
+            updateSlider('spikeWidth', randRange(0.02, 0.15), 0.01, 0.3);
+            updateSlider('shellThickness', randRange(0.01, 0.1), 0.01, 0.2);
+            updateSlider('sphereRadius', randRange(0.7, 1.5), 0.5, 2);
+            updateSlider('smoothing', randRange(0.05, 0.25), 0, 0.5);
+            updateSlider('lightX', randRange(-1, 1), -1, 1);
+            updateSlider('lightY', randRange(0, 1), -1, 1);
+            updateSlider('lightZ', randRange(-1, 1), -1, 1);
+            updateSlider('ambient', randRange(0.3, 1.5), 0, 2);
+            updateSlider('diffuse', randRange(0.5, 2), 0, 3);
+            updateSlider('shadowSoft', randRange(3, 15), 1, 20);
+
+            updateColor('objectColor', randColor());
+            updateColor('lightColor', randColor());
+            updateColor('ambientColor', randColor());
+            updateColor('bgColor', '#' + Math.floor(Math.random() * 1118481).toString(16).padStart(6, '0')); // Darker bg
+        }
+
+        function takeScreenshot() {
+            const link = document.createElement('a');
+            link.download = `shader-lab-${Date.now()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
+        function exportShader() {
+            const code = `// Shader Lab Pro+ Export
+// ${shaderNames[currentShader]} - ${presets[currentShader][currentPreset].name}
+
+#define uSpeed ${getSliderValue('speed').toFixed(3)}
+#define uTimeOffset ${getSliderValue('timeOffset').toFixed(3)}
+#define uZoom ${getSliderValue('zoom').toFixed(3)}
+#define uFov ${getSliderValue('fov').toFixed(3)}
+#define uCamHeight ${getSliderValue('camHeight').toFixed(3)}
+#define uSpikeLength ${getSliderValue('spikeLength').toFixed(3)}
+#define uSpikeWidth ${getSliderValue('spikeWidth').toFixed(3)}
+#define uShellThickness ${getSliderValue('shellThickness').toFixed(3)}
+#define uSphereRadius ${getSliderValue('sphereRadius').toFixed(3)}
+#define uSmoothing ${getSliderValue('smoothing').toFixed(3)}
+#define uLightDir vec3(${getSliderValue('lightX').toFixed(3)}, ${getSliderValue('lightY').toFixed(3)}, ${getSliderValue('lightZ').toFixed(3)})
+#define uAmbient ${getSliderValue('ambient').toFixed(3)}
+#define uDiffuse ${getSliderValue('diffuse').toFixed(3)}
+#define uShadowSoft ${getSliderValue('shadowSoft').toFixed(3)}
+#define uObjectColor vec3(${getColorValue('objectColor').r.toFixed(3)}, ${getColorValue('objectColor').g.toFixed(3)}, ${getColorValue('objectColor').b.toFixed(3)})
+#define uLightColor vec3(${getColorValue('lightColor').r.toFixed(3)}, ${getColorValue('lightColor').g.toFixed(3)}, ${getColorValue('lightColor').b.toFixed(3)})
+#define uAmbientColor vec3(${getColorValue('ambientColor').r.toFixed(3)}, ${getColorValue('ambientColor').g.toFixed(3)}, ${getColorValue('ambientColor').b.toFixed(3)})
+#define uBgColor vec3(${getColorValue('bgColor').r.toFixed(3)}, ${getColorValue('bgColor').g.toFixed(3)}, ${getColorValue('bgColor').b.toFixed(3)})
+
+// Paste the main shader code here and replace uniform declarations with defines above
+`;
+
+            document.getElementById('exportCode').textContent = code;
+            document.getElementById('exportModal').classList.add('active');
+        }
+
+        // ============================================
+        // RENDER LOOP
+        // ============================================
+
+        function render() {
+            const now = performance.now();
+            const delta = (now - lastTime) / 1000;
+            lastTime = now;
+
+            if (!paused) {
+                time += delta;
+            }
+
+            // FPS counter
+            frameCount++;
+            if (frameCount >= 30) {
+                fps = Math.round(frameCount / delta / 30);
+                document.getElementById('fpsCounter').textContent = fps + ' FPS';
+                frameCount = 0;
+            }
+
+            if (!program) {
+                requestAnimationFrame(render);
+                return;
+            }
+
+            // Set uniforms
+            gl.uniform2f(gl.getUniformLocation(program, 'iResolution'), canvas.width, canvas.height);
+            gl.uniform1f(gl.getUniformLocation(program, 'iTime'), time);
+            gl.uniform4f(gl.getUniformLocation(program, 'iMouse'), mouseX, mouseY, mouseDown, 0);
+
+            // Custom uniforms
+            gl.uniform1f(gl.getUniformLocation(program, 'uSpeed'), getSliderValue('speed'));
+            gl.uniform1f(gl.getUniformLocation(program, 'uTimeOffset'), getSliderValue('timeOffset'));
+            gl.uniform1f(gl.getUniformLocation(program, 'uZoom'), getSliderValue('zoom'));
+            gl.uniform1f(gl.getUniformLocation(program, 'uFov'), getSliderValue('fov'));
+            gl.uniform1f(gl.getUniformLocation(program, 'uCamHeight'), getSliderValue('camHeight'));
+            gl.uniform1f(gl.getUniformLocation(program, 'uSpikeLength'), getSliderValue('spikeLength'));
+            gl.uniform1f(gl.getUniformLocation(program, 'uSpikeWidth'), getSliderValue('spikeWidth'));
+            gl.uniform1f(gl.getUniformLocation(program, 'uShellThickness'), getSliderValue('shellThickness'));
+            gl.uniform1f(gl.getUniformLocation(program, 'uSphereRadius'), getSliderValue('sphereRadius'));
+            gl.uniform1f(gl.getUniformLocation(program, 'uSmoothing'), getSliderValue('smoothing'));
+
+            const lightDir = [getSliderValue('lightX'), getSliderValue('lightY'), getSliderValue('lightZ')];
+            gl.uniform3fv(gl.getUniformLocation(program, 'uLightDir'), lightDir);
+            gl.uniform1f(gl.getUniformLocation(program, 'uAmbient'), getSliderValue('ambient'));
+            gl.uniform1f(gl.getUniformLocation(program, 'uDiffuse'), getSliderValue('diffuse'));
+            gl.uniform1f(gl.getUniformLocation(program, 'uShadowSoft'), getSliderValue('shadowSoft'));
+
+            const objCol = getColorValue('objectColor');
+            const lightCol = getColorValue('lightColor');
+            const ambCol = getColorValue('ambientColor');
+            const bgCol = getColorValue('bgColor');
+
+            gl.uniform3f(gl.getUniformLocation(program, 'uObjectColor'), objCol.r, objCol.g, objCol.b);
+            gl.uniform3f(gl.getUniformLocation(program, 'uLightColor'), lightCol.r, lightCol.g, lightCol.b);
+            gl.uniform3f(gl.getUniformLocation(program, 'uAmbientColor'), ambCol.r, ambCol.g, ambCol.b);
+            gl.uniform3f(gl.getUniformLocation(program, 'uBgColor'), bgCol.r, bgCol.g, bgCol.b);
+
+            // Draw
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+            requestAnimationFrame(render);
+        }
+
+        // ============================================
+        // INIT
+        // ============================================
+
+        initWebGL();
+        setupSliderListeners();
+        setupEventListeners();
+        applyPreset(0);
+        render();
+    </script>
+</body>
+</html>
