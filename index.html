@@ -548,12 +548,17 @@
             <div class="section">
                 <div class="section-title">Shader</div>
                 <select class="shader-select" id="shaderSelect">
-                    <option value="0">Icosahedron Spikes</option>
+                    <option value="0">Fractal Orb</option>
                     <option value="1">Plasma Sphere</option>
-                    <option value="2">Fractal Orb</option>
+                    <option value="2">Icosahedron Spikes</option>
                     <option value="3">Crystal Matrix</option>
                     <option value="4">Neon Wireframe</option>
                 </select>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="section">
+                <button class="btn btn-primary" id="randomBtn" style="width: 100%; margin-bottom: 0;">Randomize</button>
             </div>
 
             <!-- Presets -->
@@ -765,8 +770,7 @@
                     <button class="btn btn-primary" id="exportBtn">Export</button>
                 </div>
                 <div class="btn-group">
-                    <button class="btn btn-secondary" id="randomBtn">Randomize</button>
-                    <button class="btn btn-secondary" id="screenshotBtn">Screenshot</button>
+                    <button class="btn btn-secondary" id="screenshotBtn" style="width: 100%;">Screenshot</button>
                 </div>
                 <div class="info-text">
                     <kbd>SPACE</kbd> Pause &nbsp; <kbd>R</kbd> Reset &nbsp; <kbd>S</kbd> Screenshot
@@ -1664,16 +1668,16 @@
         // ============================================
 
         const presets = {
-            0: [ // Icosahedron
-                { name: 'Default', speed: 1, timeOffset: 0, zoom: 4, fov: 2, camHeight: 1, spikeLength: 1.3, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.12, lightX: -0.6, lightY: 0.7, lightZ: 0.5, ambient: 0.8, diffuse: 1.2, shadowSoft: 8, objectColor: '#808080', lightColor: '#f2cc99', ambientColor: '#80b3cc', bgColor: '#0a0b0d' },
-                { name: 'Alien', speed: 0.5, timeOffset: 0, zoom: 3.5, fov: 2.2, camHeight: 1.2, spikeLength: 2, spikeWidth: 0.03, shellThickness: 0.02, sphereRadius: 0.8, smoothing: 0.08, lightX: -0.3, lightY: 0.8, lightZ: 0.6, ambient: 1, diffuse: 1.5, shadowSoft: 12, objectColor: '#2a5a3a', lightColor: '#66ff99', ambientColor: '#003322', bgColor: '#000505' },
-                { name: 'Crystal', speed: 0.3, timeOffset: 0, zoom: 3, fov: 1.8, camHeight: 0.8, spikeLength: 1.8, spikeWidth: 0.02, shellThickness: 0.015, sphereRadius: 1.2, smoothing: 0.05, lightX: 0.5, lightY: 0.9, lightZ: -0.3, ambient: 1.2, diffuse: 2, shadowSoft: 15, objectColor: '#88ccff', lightColor: '#ffffff', ambientColor: '#4488cc', bgColor: '#0a1020' },
-                { name: 'Fire', speed: 1.5, timeOffset: 0, zoom: 4.5, fov: 2, camHeight: 1, spikeLength: 1.5, spikeWidth: 0.08, shellThickness: 0.04, sphereRadius: 0.9, smoothing: 0.15, lightX: -0.4, lightY: 0.5, lightZ: 0.7, ambient: 0.6, diffuse: 1.8, shadowSoft: 6, objectColor: '#ff4422', lightColor: '#ffaa44', ambientColor: '#440000', bgColor: '#100500' },
-                { name: 'Ice', speed: 0.2, timeOffset: 0, zoom: 3.8, fov: 2.5, camHeight: 1.5, spikeLength: 2.2, spikeWidth: 0.015, shellThickness: 0.01, sphereRadius: 1.1, smoothing: 0.03, lightX: 0.7, lightY: 0.6, lightZ: 0.4, ambient: 1.5, diffuse: 0.8, shadowSoft: 20, objectColor: '#aaddff', lightColor: '#eeffff', ambientColor: '#6699bb', bgColor: '#051015' },
-                { name: 'Neon', speed: 2, timeOffset: 0, zoom: 5, fov: 1.5, camHeight: 0.5, spikeLength: 1, spikeWidth: 0.1, shellThickness: 0.05, sphereRadius: 1.3, smoothing: 0.2, lightX: -0.8, lightY: 0.3, lightZ: 0.5, ambient: 0.4, diffuse: 2.5, shadowSoft: 4, objectColor: '#ff00ff', lightColor: '#00ffff', ambientColor: '#ff0088', bgColor: '#050005' },
-                { name: 'Void', speed: 0.1, timeOffset: 5, zoom: 6, fov: 3, camHeight: 2, spikeLength: 0.5, spikeWidth: 0.12, shellThickness: 0.08, sphereRadius: 1.5, smoothing: 0.25, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.3, diffuse: 0.5, shadowSoft: 2, objectColor: '#222233', lightColor: '#444466', ambientColor: '#111122', bgColor: '#000000' },
-                { name: 'Gold', speed: 0.8, timeOffset: 0, zoom: 4, fov: 2, camHeight: 1, spikeLength: 1.4, spikeWidth: 0.06, shellThickness: 0.035, sphereRadius: 1, smoothing: 0.1, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.7, diffuse: 1.4, shadowSoft: 10, objectColor: '#cc9944', lightColor: '#ffeecc', ambientColor: '#664422', bgColor: '#0a0805' },
-                { name: 'Matrix', speed: 1.2, timeOffset: 2, zoom: 3.5, fov: 2.2, camHeight: 0.8, spikeLength: 1.6, spikeWidth: 0.04, shellThickness: 0.025, sphereRadius: 0.95, smoothing: 0.08, lightX: -0.2, lightY: 0.9, lightZ: 0.4, ambient: 0.9, diffuse: 1.6, shadowSoft: 8, objectColor: '#00ff00', lightColor: '#88ff88', ambientColor: '#003300', bgColor: '#000800' }
+            0: [ // Fractal Orb
+                { name: 'Default', speed: 1, timeOffset: 0, zoom: 4, fov: 2, camHeight: 1, spikeLength: 1, spikeWidth: 0.05, shellThickness: 0.02, sphereRadius: 1, smoothing: 0.12, lightX: -0.6, lightY: 0.7, lightZ: 0.5, ambient: 0.8, diffuse: 1.2, shadowSoft: 8, objectColor: '#8866aa', lightColor: '#ddbbff', ambientColor: '#443366', bgColor: '#080510' },
+                { name: 'Alien', speed: 0.8, timeOffset: 0, zoom: 3.5, fov: 2.2, camHeight: 1.2, spikeLength: 1.2, spikeWidth: 0.05, shellThickness: 0.015, sphereRadius: 0.9, smoothing: 0.1, lightX: -0.4, lightY: 0.8, lightZ: 0.5, ambient: 1, diffuse: 1.4, shadowSoft: 10, objectColor: '#44aa66', lightColor: '#88ffaa', ambientColor: '#224433', bgColor: '#000805' },
+                { name: 'Crystal', speed: 0.5, timeOffset: 0, zoom: 4.5, fov: 1.8, camHeight: 0.8, spikeLength: 0.8, spikeWidth: 0.05, shellThickness: 0.01, sphereRadius: 1.1, smoothing: 0.08, lightX: 0.5, lightY: 0.9, lightZ: -0.2, ambient: 1.3, diffuse: 1.8, shadowSoft: 15, objectColor: '#aaccff', lightColor: '#ffffff', ambientColor: '#5577aa', bgColor: '#050a18' },
+                { name: 'Fire', speed: 1.5, timeOffset: 0, zoom: 3.8, fov: 2, camHeight: 1, spikeLength: 1.3, spikeWidth: 0.05, shellThickness: 0.025, sphereRadius: 0.85, smoothing: 0.15, lightX: -0.5, lightY: 0.5, lightZ: 0.7, ambient: 0.6, diffuse: 2, shadowSoft: 5, objectColor: '#ff5522', lightColor: '#ffbb66', ambientColor: '#551100', bgColor: '#0a0300' },
+                { name: 'Ice', speed: 0.3, timeOffset: 0, zoom: 5, fov: 2.5, camHeight: 1.5, spikeLength: 0.7, spikeWidth: 0.05, shellThickness: 0.008, sphereRadius: 1.2, smoothing: 0.05, lightX: 0.7, lightY: 0.6, lightZ: 0.4, ambient: 1.5, diffuse: 0.9, shadowSoft: 18, objectColor: '#bbddff', lightColor: '#ffffff', ambientColor: '#7799bb', bgColor: '#030810' },
+                { name: 'Neon', speed: 2, timeOffset: 0, zoom: 3, fov: 1.5, camHeight: 0.5, spikeLength: 1.5, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1.3, smoothing: 0.2, lightX: -0.8, lightY: 0.3, lightZ: 0.5, ambient: 0.4, diffuse: 2.5, shadowSoft: 3, objectColor: '#ff00aa', lightColor: '#00ffcc', ambientColor: '#880055', bgColor: '#050005' },
+                { name: 'Void', speed: 0.15, timeOffset: 5, zoom: 6, fov: 3, camHeight: 2, spikeLength: 0.5, spikeWidth: 0.05, shellThickness: 0.005, sphereRadius: 1.5, smoothing: 0.02, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.25, diffuse: 0.4, shadowSoft: 1, objectColor: '#222233', lightColor: '#444455', ambientColor: '#111122', bgColor: '#000000' },
+                { name: 'Gold', speed: 0.7, timeOffset: 0, zoom: 4.2, fov: 2, camHeight: 1, spikeLength: 0.9, spikeWidth: 0.05, shellThickness: 0.018, sphereRadius: 1, smoothing: 0.1, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.7, diffuse: 1.5, shadowSoft: 10, objectColor: '#ccaa55', lightColor: '#ffeebb', ambientColor: '#775522', bgColor: '#080503' },
+                { name: 'Matrix', speed: 1.2, timeOffset: 2, zoom: 3.8, fov: 2.2, camHeight: 0.8, spikeLength: 1.1, spikeWidth: 0.05, shellThickness: 0.015, sphereRadius: 0.95, smoothing: 0.08, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.85, diffuse: 1.6, shadowSoft: 8, objectColor: '#00dd44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000600' }
             ],
             1: [ // Plasma Sphere
                 { name: 'Default', speed: 1, timeOffset: 0, zoom: 4, fov: 2, camHeight: 1, spikeLength: 0.3, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.12, lightX: -0.6, lightY: 0.7, lightZ: 0.5, ambient: 0.8, diffuse: 1.2, shadowSoft: 8, objectColor: '#ff6688', lightColor: '#ffccdd', ambientColor: '#6644aa', bgColor: '#0a0510' },
@@ -1686,16 +1690,16 @@
                 { name: 'Gold', speed: 0.8, timeOffset: 0, zoom: 4.2, fov: 2, camHeight: 1, spikeLength: 0.35, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.1, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.7, diffuse: 1.4, shadowSoft: 10, objectColor: '#ddaa44', lightColor: '#ffeeaa', ambientColor: '#886622', bgColor: '#080500' },
                 { name: 'Matrix', speed: 1.5, timeOffset: 1, zoom: 3.8, fov: 2, camHeight: 1, spikeLength: 0.4, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.12, lightX: -0.3, lightY: 0.8, lightZ: 0.5, ambient: 0.8, diffuse: 1.6, shadowSoft: 8, objectColor: '#00ff44', lightColor: '#88ffaa', ambientColor: '#004411', bgColor: '#000500' }
             ],
-            2: [ // Fractal Orb
-                { name: 'Default', speed: 1, timeOffset: 0, zoom: 4, fov: 2, camHeight: 1, spikeLength: 1, spikeWidth: 0.05, shellThickness: 0.02, sphereRadius: 1, smoothing: 0.12, lightX: -0.6, lightY: 0.7, lightZ: 0.5, ambient: 0.8, diffuse: 1.2, shadowSoft: 8, objectColor: '#8866aa', lightColor: '#ddbbff', ambientColor: '#443366', bgColor: '#080510' },
-                { name: 'Alien', speed: 0.8, timeOffset: 0, zoom: 3.5, fov: 2.2, camHeight: 1.2, spikeLength: 1.2, spikeWidth: 0.05, shellThickness: 0.015, sphereRadius: 0.9, smoothing: 0.1, lightX: -0.4, lightY: 0.8, lightZ: 0.5, ambient: 1, diffuse: 1.4, shadowSoft: 10, objectColor: '#44aa66', lightColor: '#88ffaa', ambientColor: '#224433', bgColor: '#000805' },
-                { name: 'Crystal', speed: 0.5, timeOffset: 0, zoom: 4.5, fov: 1.8, camHeight: 0.8, spikeLength: 0.8, spikeWidth: 0.05, shellThickness: 0.01, sphereRadius: 1.1, smoothing: 0.08, lightX: 0.5, lightY: 0.9, lightZ: -0.2, ambient: 1.3, diffuse: 1.8, shadowSoft: 15, objectColor: '#aaccff', lightColor: '#ffffff', ambientColor: '#5577aa', bgColor: '#050a18' },
-                { name: 'Fire', speed: 1.5, timeOffset: 0, zoom: 3.8, fov: 2, camHeight: 1, spikeLength: 1.3, spikeWidth: 0.05, shellThickness: 0.025, sphereRadius: 0.85, smoothing: 0.15, lightX: -0.5, lightY: 0.5, lightZ: 0.7, ambient: 0.6, diffuse: 2, shadowSoft: 5, objectColor: '#ff5522', lightColor: '#ffbb66', ambientColor: '#551100', bgColor: '#0a0300' },
-                { name: 'Ice', speed: 0.3, timeOffset: 0, zoom: 5, fov: 2.5, camHeight: 1.5, spikeLength: 0.7, spikeWidth: 0.05, shellThickness: 0.008, sphereRadius: 1.2, smoothing: 0.05, lightX: 0.7, lightY: 0.6, lightZ: 0.4, ambient: 1.5, diffuse: 0.9, shadowSoft: 18, objectColor: '#bbddff', lightColor: '#ffffff', ambientColor: '#7799bb', bgColor: '#030810' },
-                { name: 'Neon', speed: 2, timeOffset: 0, zoom: 3, fov: 1.5, camHeight: 0.5, spikeLength: 1.5, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1.3, smoothing: 0.2, lightX: -0.8, lightY: 0.3, lightZ: 0.5, ambient: 0.4, diffuse: 2.5, shadowSoft: 3, objectColor: '#ff00aa', lightColor: '#00ffcc', ambientColor: '#880055', bgColor: '#050005' },
-                { name: 'Void', speed: 0.15, timeOffset: 5, zoom: 6, fov: 3, camHeight: 2, spikeLength: 0.5, spikeWidth: 0.05, shellThickness: 0.005, sphereRadius: 1.5, smoothing: 0.02, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.25, diffuse: 0.4, shadowSoft: 1, objectColor: '#222233', lightColor: '#444455', ambientColor: '#111122', bgColor: '#000000' },
-                { name: 'Gold', speed: 0.7, timeOffset: 0, zoom: 4.2, fov: 2, camHeight: 1, spikeLength: 0.9, spikeWidth: 0.05, shellThickness: 0.018, sphereRadius: 1, smoothing: 0.1, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.7, diffuse: 1.5, shadowSoft: 10, objectColor: '#ccaa55', lightColor: '#ffeebb', ambientColor: '#775522', bgColor: '#080503' },
-                { name: 'Matrix', speed: 1.2, timeOffset: 2, zoom: 3.8, fov: 2.2, camHeight: 0.8, spikeLength: 1.1, spikeWidth: 0.05, shellThickness: 0.015, sphereRadius: 0.95, smoothing: 0.08, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.85, diffuse: 1.6, shadowSoft: 8, objectColor: '#00dd44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000600' }
+            2: [ // Icosahedron Spikes
+                { name: 'Default', speed: 1, timeOffset: 0, zoom: 4, fov: 2, camHeight: 1, spikeLength: 1.3, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.12, lightX: -0.6, lightY: 0.7, lightZ: 0.5, ambient: 0.8, diffuse: 1.2, shadowSoft: 8, objectColor: '#808080', lightColor: '#f2cc99', ambientColor: '#80b3cc', bgColor: '#0a0b0d' },
+                { name: 'Alien', speed: 0.5, timeOffset: 0, zoom: 3.5, fov: 2.2, camHeight: 1.2, spikeLength: 2, spikeWidth: 0.03, shellThickness: 0.02, sphereRadius: 0.8, smoothing: 0.08, lightX: -0.3, lightY: 0.8, lightZ: 0.6, ambient: 1, diffuse: 1.5, shadowSoft: 12, objectColor: '#2a5a3a', lightColor: '#66ff99', ambientColor: '#003322', bgColor: '#000505' },
+                { name: 'Crystal', speed: 0.3, timeOffset: 0, zoom: 3, fov: 1.8, camHeight: 0.8, spikeLength: 1.8, spikeWidth: 0.02, shellThickness: 0.015, sphereRadius: 1.2, smoothing: 0.05, lightX: 0.5, lightY: 0.9, lightZ: -0.3, ambient: 1.2, diffuse: 2, shadowSoft: 15, objectColor: '#88ccff', lightColor: '#ffffff', ambientColor: '#4488cc', bgColor: '#0a1020' },
+                { name: 'Fire', speed: 1.5, timeOffset: 0, zoom: 4.5, fov: 2, camHeight: 1, spikeLength: 1.5, spikeWidth: 0.08, shellThickness: 0.04, sphereRadius: 0.9, smoothing: 0.15, lightX: -0.4, lightY: 0.5, lightZ: 0.7, ambient: 0.6, diffuse: 1.8, shadowSoft: 6, objectColor: '#ff4422', lightColor: '#ffaa44', ambientColor: '#440000', bgColor: '#100500' },
+                { name: 'Ice', speed: 0.2, timeOffset: 0, zoom: 3.8, fov: 2.5, camHeight: 1.5, spikeLength: 2.2, spikeWidth: 0.015, shellThickness: 0.01, sphereRadius: 1.1, smoothing: 0.03, lightX: 0.7, lightY: 0.6, lightZ: 0.4, ambient: 1.5, diffuse: 0.8, shadowSoft: 20, objectColor: '#aaddff', lightColor: '#eeffff', ambientColor: '#6699bb', bgColor: '#051015' },
+                { name: 'Neon', speed: 2, timeOffset: 0, zoom: 5, fov: 1.5, camHeight: 0.5, spikeLength: 1, spikeWidth: 0.1, shellThickness: 0.05, sphereRadius: 1.3, smoothing: 0.2, lightX: -0.8, lightY: 0.3, lightZ: 0.5, ambient: 0.4, diffuse: 2.5, shadowSoft: 4, objectColor: '#ff00ff', lightColor: '#00ffff', ambientColor: '#ff0088', bgColor: '#050005' },
+                { name: 'Void', speed: 0.1, timeOffset: 5, zoom: 6, fov: 3, camHeight: 2, spikeLength: 0.5, spikeWidth: 0.12, shellThickness: 0.08, sphereRadius: 1.5, smoothing: 0.25, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.3, diffuse: 0.5, shadowSoft: 2, objectColor: '#222233', lightColor: '#444466', ambientColor: '#111122', bgColor: '#000000' },
+                { name: 'Gold', speed: 0.8, timeOffset: 0, zoom: 4, fov: 2, camHeight: 1, spikeLength: 1.4, spikeWidth: 0.06, shellThickness: 0.035, sphereRadius: 1, smoothing: 0.1, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.7, diffuse: 1.4, shadowSoft: 10, objectColor: '#cc9944', lightColor: '#ffeecc', ambientColor: '#664422', bgColor: '#0a0805' },
+                { name: 'Matrix', speed: 1.2, timeOffset: 2, zoom: 3.5, fov: 2.2, camHeight: 0.8, spikeLength: 1.6, spikeWidth: 0.04, shellThickness: 0.025, sphereRadius: 0.95, smoothing: 0.08, lightX: -0.2, lightY: 0.9, lightZ: 0.4, ambient: 0.9, diffuse: 1.6, shadowSoft: 8, objectColor: '#00ff00', lightColor: '#88ff88', ambientColor: '#003300', bgColor: '#000800' }
             ],
             3: [ // Crystal Matrix (same preset structure)
                 { name: 'Default', speed: 1, timeOffset: 0, zoom: 4, fov: 2, camHeight: 1, spikeLength: 0.5, spikeWidth: 0.08, shellThickness: 0.03, sphereRadius: 2, smoothing: 0.12, lightX: -0.6, lightY: 0.7, lightZ: 0.5, ambient: 0.8, diffuse: 1.2, shadowSoft: 8, objectColor: '#66aacc', lightColor: '#aaddff', ambientColor: '#335566', bgColor: '#050810' },
@@ -1721,7 +1725,7 @@
             ]
         };
 
-        const shaderNames = ['Icosahedron Spikes', 'Plasma Sphere', 'Fractal Orb', 'Crystal Matrix', 'Neon Wireframe'];
+        const shaderNames = ['Fractal Orb', 'Plasma Sphere', 'Icosahedron Spikes', 'Crystal Matrix', 'Neon Wireframe'];
 
         // ============================================
         // WEBGL SETUP
@@ -1790,9 +1794,9 @@
         function switchShader(index) {
             currentShader = index;
             const shaderSources = [
-                shaders.icosahedron,
-                shaders.plasmaSphere,
                 shaders.fractalOrb,
+                shaders.plasmaSphere,
+                shaders.icosahedron,
                 shaders.crystalMatrix,
                 shaders.neonWireframe
             ];
@@ -2028,9 +2032,9 @@
         function exportShader() {
             // Get the current shader source
             const shaderSources = [
-                shaders.icosahedron,
-                shaders.plasmaSphere,
                 shaders.fractalOrb,
+                shaders.plasmaSphere,
+                shaders.icosahedron,
                 shaders.crystalMatrix,
                 shaders.neonWireframe
             ];
