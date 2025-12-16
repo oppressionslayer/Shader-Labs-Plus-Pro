@@ -85,6 +85,28 @@
             color: var(--accent-primary);
         }
 
+        .audio-control {
+            cursor: pointer;
+            background: rgba(255, 50, 100, 0.3);
+            border: 1px solid rgba(255, 50, 100, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .audio-control:hover {
+            background: rgba(255, 50, 100, 0.5);
+            transform: scale(1.05);
+        }
+
+        .audio-control.playing {
+            background: rgba(50, 255, 150, 0.3);
+            border: 1px solid rgba(50, 255, 150, 0.5);
+            color: #50ff96;
+        }
+
+        .audio-control.playing:hover {
+            background: rgba(50, 255, 150, 0.5);
+        }
+
         .badge-live::before {
             content: '';
             width: 8px;
@@ -531,10 +553,12 @@
     <div class="container">
         <div class="canvas-section">
             <canvas id="shaderCanvas"></canvas>
+            <audio id="bgAudio" src="1.mp3" loop preload="auto"></audio>
             <div class="canvas-overlay">
                 <div class="badge badge-live">LIVE</div>
                 <div class="badge fps-counter" id="fpsCounter">60 FPS</div>
                 <div class="badge" id="presetIndicator">Icosahedron | Default</div>
+                <div class="badge audio-control" id="audioControl" title="Click to unmute audio">MUTED</div>
             </div>
         </div>
 
@@ -553,6 +577,13 @@
                     <option value="2">Icosahedron Spikes</option>
                     <option value="3">Crystal Matrix</option>
                     <option value="4">Neon Wireframe</option>
+                    <option value="5">Galactic Vortex</option>
+                    <option value="6">Cyberpunk City</option>
+                    <option value="7">Liquid Metal</option>
+                    <option value="8">Quantum Flux</option>
+                    <option value="9">Void Tendrils</option>
+                    <option value="10">Prismatic Storm</option>
+                    <option value="11">Biomech Entity</option>
                 </select>
             </div>
 
@@ -1538,7 +1569,7 @@
                 }
             `,
 
-            // Shader 4: Neon Wireframe
+            // Shader 4: Neon Wireframe - EPIC UPGRADE
             neonWireframe: `
                 precision highp float;
                 uniform vec2 iResolution;
@@ -1564,45 +1595,835 @@
                 uniform vec3 uBgColor;
 
                 #define PI 3.14159265359
+                #define TAU 6.28318530718
+
+                mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+
+                float hash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 
                 float sdTorus(vec3 p, vec2 t) {
                     vec2 q = vec2(length(p.xz) - t.x, p.y);
                     return length(q) - t.y;
                 }
 
-                float sdCappedCylinder(vec3 p, float h, float r) {
+                float sdLink(vec3 p, float le, float r1, float r2) {
+                    vec3 q = vec3(p.x, max(abs(p.y) - le, 0.0), p.z);
+                    return length(vec2(length(q.xy) - r1, q.z)) - r2;
+                }
+
+                float sdGyroid(vec3 p, float scale) {
+                    p *= scale;
+                    return abs(dot(sin(p), cos(p.zxy))) / scale - 0.03;
+                }
+
+                float smin(float a, float b, float k) {
+                    float h = max(k - abs(a - b), 0.0) / k;
+                    return min(a, b) - h * h * k * 0.25;
+                }
+
+                float map(vec3 p, float t) {
+                    vec3 q = p;
+                    q.xy *= rot(t * 0.3);
+                    q.yz *= rot(t * 0.23);
+                    q.xz *= rot(t * 0.17);
+
+                    float d = 1e10;
+                    float r = uSphereRadius;
+                    float w = uSpikeWidth * 0.8;
+
+                    // Interlocking gyroid tori
+                    for(int i = 0; i < 3; i++) {
+                        vec3 rp = q;
+                        float angle = float(i) * TAU / 3.0;
+                        rp.xy *= rot(angle);
+                        rp.yz *= rot(angle * 0.7);
+                        float torus = sdTorus(rp, vec2(r, w));
+                        d = smin(d, torus, 0.1);
+                    }
+
+                    // Morphing chain links
+                    vec3 lp = q;
+                    float linkPhase = sin(t * 0.5) * 0.3;
+                    for(int i = 0; i < 4; i++) {
+                        vec3 rp = lp;
+                        rp.xz *= rot(float(i) * PI * 0.5 + t * 0.2);
+                        rp.y += sin(t + float(i)) * 0.2 * uSpikeLength;
+                        float link = sdLink(rp, 0.2 + linkPhase, r * 0.6, w * 0.7);
+                        d = smin(d, link, 0.15);
+                    }
+
+                    // Gyroid shell intersection
+                    float gyro = sdGyroid(q * (1.0 + uShellThickness), 3.0 + sin(t * 0.3));
+                    float sphere = length(q) - r * 1.3;
+                    float gyroShell = max(gyro, sphere);
+                    d = smin(d, gyroShell * 0.8, 0.1);
+
+                    // Pulsing core
+                    float core = length(q) - r * 0.3 * (1.0 + sin(t * 2.0) * 0.2);
+                    d = smin(d, core, 0.2);
+
+                    return d * 0.7;
+                }
+
+                vec3 calcNormal(vec3 p, float t) {
+                    vec2 e = vec2(0.001, 0.0);
+                    return normalize(vec3(
+                        map(p + e.xyy, t) - map(p - e.xyy, t),
+                        map(p + e.yxy, t) - map(p - e.yxy, t),
+                        map(p + e.yyx, t) - map(p - e.yyx, t)
+                    ));
+                }
+
+                float glow(float d) { return uSmoothing / (abs(d) + uSmoothing * 0.5); }
+
+                vec3 palette(float t) {
+                    return 0.5 + 0.5 * cos(TAU * (vec3(0.0, 0.33, 0.67) + t));
+                }
+
+                void main() {
+                    float t = iTime * uSpeed + uTimeOffset;
+                    vec2 uv = (gl_FragCoord.xy * 2.0 - iResolution.xy) / iResolution.y;
+                    vec2 m = iMouse.xy / iResolution.xy;
+                    if(iMouse.z < 0.5) m = vec2(0.5);
+
+                    vec3 ro = vec3(0.0, uCamHeight, uZoom);
+                    ro.xz *= rot(m.x * TAU - PI);
+                    ro.yz *= rot((m.y - 0.5) * PI * 0.5);
+                    vec3 ta = vec3(0.0);
+                    vec3 ww = normalize(ta - ro);
+                    vec3 uu = normalize(cross(ww, vec3(0, 1, 0)));
+                    vec3 vv = cross(uu, ww);
+                    vec3 rd = normalize(uv.x * uu + uv.y * vv + uFov * ww);
+
+                    float d = 0.0;
+                    vec3 p;
+                    float glowAccum = 0.0;
+                    vec3 glowColor = vec3(0.0);
+
+                    for(int i = 0; i < 100; i++) {
+                        p = ro + rd * d;
+                        float h = map(p, t);
+                        float g = glow(h);
+                        glowAccum += g * 0.015;
+                        vec3 pulseCol = palette(length(p) * 0.3 - t * 0.5);
+                        glowColor += pulseCol * g * 0.02;
+                        if(h < 0.0005 || d > 20.0) break;
+                        d += h * 0.8;
+                    }
+
+                    vec3 col = uBgColor;
+
+                    // Volumetric glow with color cycling
+                    col += uObjectColor * glowAccum * 0.6;
+                    col += uLightColor * glowAccum * 0.4;
+                    col += glowColor * 0.5;
+
+                    if(d < 20.0) {
+                        vec3 n = calcNormal(p, t);
+                        vec3 l = normalize(uLightDir);
+                        float diff = max(dot(n, l), 0.0);
+                        float spec = pow(max(dot(reflect(-l, n), -rd), 0.0), 32.0);
+                        float fres = pow(1.0 - abs(dot(n, rd)), 3.0);
+
+                        vec3 baseCol = uObjectColor * (1.0 + sin(p.x * 5.0 + t) * 0.3);
+                        col = baseCol * (uAmbient * uAmbientColor + diff * uDiffuse * uLightColor);
+                        col += spec * uLightColor * 2.0;
+                        col += fres * uLightColor * 1.5;
+
+                        // Scanline effect
+                        float scan = sin(p.y * 40.0 + t * 5.0) * 0.1 + 0.9;
+                        col *= scan;
+                    }
+
+                    // Bloom
+                    col += glowAccum * uObjectColor * 0.3;
+
+                    col = pow(col, vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 5: Galactic Vortex - EPIC UPGRADE
+            galacticVortex: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                #define PI 3.14159265359
+                #define TAU 6.28318530718
+
+                mat2 rot(float a) { float s = sin(a), c = cos(a); return mat2(c, -s, s, c); }
+
+                float hash21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+                float hash31(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+
+                float noise(vec3 p) {
+                    vec3 i = floor(p), f = fract(p);
+                    f = f * f * (3.0 - 2.0 * f);
+                    float n = i.x + i.y * 157.0 + i.z * 113.0;
+                    return mix(mix(mix(hash31(vec3(n, n + 1.0, n + 157.0)),
+                                       hash31(vec3(n + 1.0, n + 2.0, n + 158.0)), f.x),
+                                   mix(hash31(vec3(n + 157.0, n + 158.0, n + 314.0)),
+                                       hash31(vec3(n + 158.0, n + 159.0, n + 315.0)), f.x), f.y),
+                               mix(mix(hash31(vec3(n + 113.0, n + 114.0, n + 270.0)),
+                                       hash31(vec3(n + 114.0, n + 115.0, n + 271.0)), f.x),
+                                   mix(hash31(vec3(n + 270.0, n + 271.0, n + 427.0)),
+                                       hash31(vec3(n + 271.0, n + 272.0, n + 428.0)), f.x), f.y), f.z);
+                }
+
+                float fbm(vec3 p, int octaves) {
+                    float v = 0.0, a = 0.5;
+                    mat2 r = rot(0.37);
+                    for(int i = 0; i < 6; i++) {
+                        if(i >= octaves) break;
+                        v += a * noise(p);
+                        p = vec3(p.xy * r, p.z) * 2.0 + 0.5;
+                        a *= 0.5;
+                    }
+                    return v;
+                }
+
+                vec3 starField(vec3 rd, float t) {
+                    vec3 col = vec3(0.0);
+                    for(int layer = 0; layer < 3; layer++) {
+                        float scale = 100.0 + float(layer) * 50.0;
+                        vec3 p = rd * scale;
+                        vec3 id = floor(p);
+                        vec3 fd = fract(p) - 0.5;
+                        float star = hash31(id);
+                        if(star > 0.97) {
+                            float brightness = (star - 0.97) * 33.0;
+                            brightness *= smoothstep(0.5, 0.1, length(fd));
+                            brightness *= 0.5 + 0.5 * sin(t * 3.0 + star * 100.0);
+                            vec3 starCol = mix(vec3(1.0, 0.8, 0.6), vec3(0.6, 0.8, 1.0), hash31(id + 100.0));
+                            col += starCol * brightness;
+                        }
+                    }
+                    return col;
+                }
+
+                float spiralArm(vec3 p, float t, float armNum) {
+                    float angle = atan(p.z, p.x);
+                    float r = length(p.xz);
+                    float spiral = angle + r * (2.0 + uSpikeLength) - t * 0.5 + armNum * TAU / 4.0;
+                    float arm = sin(spiral * 2.0) * 0.5 + 0.5;
+                    arm = pow(arm, 3.0);
+                    arm *= smoothstep(uSphereRadius * 2.0, 0.0, r);
+                    arm *= smoothstep(0.0, 0.3, r);
+                    return arm;
+                }
+
+                vec4 volumetricGalaxy(vec3 ro, vec3 rd, float t) {
+                    vec4 acc = vec4(0.0);
+                    float stepSize = 0.08;
+
+                    for(int i = 0; i < 80; i++) {
+                        float dist = float(i) * stepSize;
+                        vec3 p = ro + rd * dist;
+
+                        p.xz *= rot(t * 0.1);
+                        p.xy *= rot(t * 0.07);
+
+                        float r = length(p.xz);
+                        float h = abs(p.y);
+
+                        // Disk shape
+                        float disk = smoothstep(uSphereRadius * 1.5, 0.0, h / (0.1 + r * 0.3));
+                        disk *= smoothstep(uSphereRadius * 2.5, 0.0, r);
+
+                        // Spiral arms
+                        float arms = 0.0;
+                        for(int a = 0; a < 4; a++) {
+                            arms += spiralArm(p, t, float(a));
+                        }
+                        arms = min(arms, 1.0);
+
+                        // Dust and gas
+                        float dust = fbm(p * 3.0 + t * 0.2, 4) * disk * arms;
+                        float gas = fbm(p * 1.5 - t * 0.1, 3) * disk;
+
+                        // Core glow
+                        float core = exp(-length(p) * 2.0 / uSphereRadius) * 3.0;
+
+                        // Color
+                        vec3 armColor = mix(uObjectColor, uLightColor, arms);
+                        vec3 coreColor = mix(uLightColor, vec3(1.0, 0.9, 0.7), 0.5);
+                        vec3 dustColor = uAmbientColor * 0.5;
+
+                        vec3 localCol = armColor * dust * uShellThickness * 15.0;
+                        localCol += coreColor * core * uSmoothing * 3.0;
+                        localCol += dustColor * gas * 0.2;
+
+                        float alpha = (dust + core * 0.1) * stepSize * 2.0;
+                        acc.rgb += localCol * (1.0 - acc.a);
+                        acc.a += alpha * (1.0 - acc.a);
+
+                        if(acc.a > 0.95 || dist > 10.0) break;
+                    }
+                    return acc;
+                }
+
+                void main() {
+                    float t = iTime * uSpeed + uTimeOffset;
+                    vec2 uv = (gl_FragCoord.xy * 2.0 - iResolution.xy) / iResolution.y;
+                    vec2 m = iMouse.xy / iResolution.xy;
+                    if(iMouse.z < 0.5) m = vec2(0.3, 0.4);
+
+                    vec3 ro = vec3(0.0, uCamHeight + 2.0, uZoom + 3.0);
+                    ro.xz *= rot(m.x * TAU);
+                    ro.yz *= rot((m.y - 0.5) * PI);
+
+                    vec3 ta = vec3(0.0);
+                    vec3 ww = normalize(ta - ro);
+                    vec3 uu = normalize(cross(ww, vec3(0, 1, 0)));
+                    vec3 vv = cross(uu, ww);
+                    vec3 rd = normalize(uv.x * uu + uv.y * vv + uFov * ww);
+
+                    // Background
+                    vec3 col = uBgColor;
+                    col += starField(rd, t) * 0.5;
+
+                    // Volumetric galaxy
+                    vec4 galaxy = volumetricGalaxy(ro, rd, t);
+                    col = mix(col, galaxy.rgb, galaxy.a);
+
+                    // Lens flare from core
+                    vec2 coreScreen = vec2(0.0);
+                    float flare = exp(-length(uv - coreScreen) * 3.0) * 0.3;
+                    col += uLightColor * flare;
+
+                    // Chromatic aberration
+                    float aberr = length(uv) * 0.02;
+                    col.r += aberr * 0.5;
+                    col.b -= aberr * 0.5;
+
+                    col = pow(col, vec3(1.0/2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 6: Cyberpunk City - EPIC UPGRADE
+            cyberpunkCity: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                #define PI 3.14159265359
+                #define TAU 6.28318530718
+
+                float hash21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+                vec3 hash23(vec2 p) { return fract(sin(vec3(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3)),dot(p,vec2(419.2,371.9))))*43758.5453); }
+
+                float sdBox(vec3 p, vec3 b) {
+                    vec3 d = abs(p) - b;
+                    return length(max(d, 0.0)) + min(max(d.x, max(d.y, d.z)), 0.0);
+                }
+
+                float sdCylinder(vec3 p, float h, float r) {
                     vec2 d = abs(vec2(length(p.xz), p.y)) - vec2(r, h);
                     return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
                 }
 
-                mat2 rot(float a) {
-                    float c = cos(a), s = sin(a);
-                    return mat2(c, -s, s, c);
+                vec2 map(vec3 p, float t) {
+                    float d = p.y + 1.0;
+                    float matId = 0.0;
+
+                    vec3 q = p;
+                    vec2 cellSize = vec2(3.0 + uSpikeWidth * 3.0);
+                    vec2 id = floor(q.xz / cellSize);
+                    q.xz = mod(q.xz + cellSize * 0.5, cellSize) - cellSize * 0.5;
+
+                    float rnd = hash21(id);
+                    float rnd2 = hash21(id + 100.0);
+                    float rnd3 = hash21(id + 200.0);
+
+                    // Building height with variation
+                    float h = (rnd * 0.8 + 0.2) * uSpikeLength * 4.0 + 0.5;
+                    h *= smoothstep(15.0, 0.0, length(id * cellSize));
+
+                    // Main building
+                    vec3 buildingSize = vec3(0.8 + rnd2 * 0.4, h, 0.8 + rnd3 * 0.4);
+                    float building = sdBox(q - vec3(0, h - 1.0, 0), buildingSize);
+
+                    // Rooftop structures
+                    if(rnd > 0.5) {
+                        float antenna = sdCylinder(q - vec3(0, h * 2.0 - 0.5, 0), h * 0.3, 0.05);
+                        building = min(building, antenna);
+                    }
+
+                    // Windows carved into building
+                    vec3 wq = q;
+                    float windowSpacing = 0.25;
+                    wq.y = mod(wq.y + windowSpacing * 0.5, windowSpacing) - windowSpacing * 0.5;
+                    wq.x = mod(wq.x + 0.15, 0.3) - 0.15;
+                    wq.z = mod(wq.z + 0.15, 0.3) - 0.15;
+                    float windowDepth = 0.05 + rnd * 0.03;
+                    float windows = sdBox(wq, vec3(0.08, 0.08, windowDepth));
+                    windows = max(windows, -sdBox(q - vec3(0, h - 1.0, 0), buildingSize - 0.02));
+
+                    if(building < d) {
+                        d = building;
+                        matId = 1.0;
+                    }
+
+                    // Flying vehicles (light trails)
+                    for(int i = 0; i < 3; i++) {
+                        float lane = float(i) * 2.0 - 2.0;
+                        float speed = 3.0 + float(i) * 1.5;
+                        vec3 carPos = vec3(
+                            sin(t * 0.3 + float(i) * 2.0) * 8.0,
+                            2.0 + float(i) * 1.5 + sin(t * 0.5 + float(i)) * 0.5,
+                            mod(t * speed + float(i) * 20.0, 60.0) - 30.0
+                        );
+                        float car = length(p - carPos) - 0.15;
+                        if(car < d) {
+                            d = car;
+                            matId = 2.0 + float(i);
+                        }
+                    }
+
+                    // Neon signs (floating)
+                    float signY = 3.0 + sin(t * 0.5 + id.x) * 0.3;
+                    vec3 signPos = q - vec3(0.9, signY, 0);
+                    float sign = sdBox(signPos, vec3(0.02, 0.3, 0.5));
+                    if(sign < d && rnd > 0.3) {
+                        d = sign;
+                        matId = 5.0;
+                    }
+
+                    return vec2(d, matId);
+                }
+
+                vec3 calcNormal(vec3 p, float t) {
+                    vec2 e = vec2(0.001, 0.0);
+                    return normalize(vec3(
+                        map(p + e.xyy, t).x - map(p - e.xyy, t).x,
+                        map(p + e.yxy, t).x - map(p - e.yxy, t).x,
+                        map(p + e.yyx, t).x - map(p - e.yyx, t).x
+                    ));
+                }
+
+                float windowGlow(vec3 p, float t) {
+                    float ws = 0.25;
+                    vec2 wuv = vec2(mod(p.x + 0.15, 0.3), mod(p.y + ws * 0.5, ws));
+                    float lit = step(0.7, hash21(floor(p.xz * 3.0) + floor(p.y / ws)));
+                    lit *= step(0.1, wuv.x) * step(wuv.x, 0.2);
+                    lit *= step(0.05, wuv.y) * step(wuv.y, 0.2);
+                    float flicker = 0.8 + 0.2 * sin(t * 10.0 + hash21(floor(p.xz * 3.0)) * 100.0);
+                    return lit * flicker;
+                }
+
+                vec3 neonColor(float id, float t) {
+                    if(id < 3.0) return uLightColor;
+                    if(id < 4.0) return vec3(1.0, 0.2, 0.5);
+                    if(id < 5.0) return vec3(0.2, 1.0, 0.8);
+                    return mix(uObjectColor, uLightColor, sin(t * 2.0) * 0.5 + 0.5);
+                }
+
+                void main() {
+                    float t = iTime * uSpeed + uTimeOffset;
+                    vec2 uv = (gl_FragCoord.xy * 2.0 - iResolution.xy) / iResolution.y;
+                    vec2 m = iMouse.xy / iResolution.xy;
+                    if(iMouse.z < 0.5) m = vec2(0.5, 0.4);
+
+                    // Fly-through camera
+                    vec3 ro = vec3(sin(t * 0.1) * 5.0, uCamHeight + 3.0 + sin(t * 0.15) * 2.0, t * 3.0);
+                    vec3 ta = ro + vec3(sin(m.x * 4.0 - 2.0) * 3.0, (m.y - 0.5) * 4.0, 8.0);
+
+                    vec3 ww = normalize(ta - ro);
+                    vec3 uu = normalize(cross(ww, vec3(0.0, 1.0, 0.0)));
+                    vec3 vv = cross(uu, ww);
+                    vec3 rd = normalize(uv.x * uu + uv.y * vv + uFov * ww);
+
+                    float d = 0.0;
+                    vec3 p;
+                    float glow = 0.0;
+                    vec3 glowCol = vec3(0.0);
+
+                    for(int i = 0; i < 120; i++) {
+                        p = ro + rd * d;
+                        vec2 res = map(p, t);
+                        float h = res.x;
+
+                        // Accumulate glow near surfaces
+                        float glowDist = uSmoothing / (abs(h) + uSmoothing);
+                        if(res.y > 1.5) {
+                            glowCol += neonColor(res.y, t) * glowDist * 0.015;
+                        }
+
+                        if(h < 0.001 || d > 60.0) break;
+                        d += h * 0.8;
+                    }
+
+                    // Sky gradient with pollution haze
+                    vec3 sky = mix(uBgColor, uBgColor * 2.0, uv.y * 0.5 + 0.5);
+                    sky += uLightColor * 0.1 * exp(-abs(uv.y) * 3.0);
+                    vec3 col = sky;
+
+                    if(d < 60.0) {
+                        vec2 res = map(p, t);
+                        vec3 n = calcNormal(p, t);
+                        vec3 l = normalize(uLightDir);
+                        float diff = max(dot(n, l), 0.0);
+
+                        if(res.y < 1.5) {
+                            // Building
+                            col = uObjectColor * 0.3;
+                            col += uAmbientColor * uAmbient * 0.2;
+                            col += uLightColor * diff * uDiffuse * 0.3;
+
+                            // Window emission
+                            float wg = windowGlow(p, t);
+                            vec3 windowCol = hash23(floor(p.xz * 3.0) + floor(vec2(p.y / 0.25)));
+                            windowCol = mix(vec3(1.0, 0.9, 0.7), uLightColor, windowCol.x);
+                            col += windowCol * wg * 1.5;
+
+                            // Edge glow (cyberpunk style)
+                            float edge = 1.0 - abs(dot(n, rd));
+                            col += uLightColor * pow(edge, 3.0) * uShellThickness * 5.0;
+                        } else {
+                            // Neon objects
+                            col = neonColor(res.y, t) * 3.0;
+                        }
+
+                        // Fog
+                        float fog = 1.0 - exp(-d * 0.03);
+                        col = mix(col, sky + uLightColor * 0.05, fog);
+                    }
+
+                    // Add accumulated glow
+                    col += glowCol;
+
+                    // Rain effect
+                    float rain = hash21(uv * 100.0 + t * 50.0);
+                    if(rain > 0.995) col += vec3(0.3);
+
+                    // Scanlines
+                    col *= 0.95 + 0.05 * sin(gl_FragCoord.y * 1.5);
+
+                    // Vignette
+                    col *= 1.0 - length(uv) * 0.3;
+
+                    col = pow(col, vec3(1.0/2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 7: Liquid Metal - EPIC UPGRADE
+            liquidMetal: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                #define PI 3.14159265359
+                #define TAU 6.28318530718
+
+                mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+
+                float hash31(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+
+                float noise(vec3 p) {
+                    vec3 i = floor(p), f = fract(p);
+                    f = f * f * (3.0 - 2.0 * f);
+                    return mix(mix(mix(hash31(i), hash31(i + vec3(1,0,0)), f.x),
+                                   mix(hash31(i + vec3(0,1,0)), hash31(i + vec3(1,1,0)), f.x), f.y),
+                               mix(mix(hash31(i + vec3(0,0,1)), hash31(i + vec3(1,0,1)), f.x),
+                                   mix(hash31(i + vec3(0,1,1)), hash31(i + vec3(1,1,1)), f.x), f.y), f.z);
+                }
+
+                float fbm(vec3 p) {
+                    float v = 0.0, a = 0.5;
+                    mat2 r = rot(0.5);
+                    for(int i = 0; i < 5; i++) {
+                        v += a * noise(p);
+                        p = vec3(p.xy * r, p.z) * 2.0 + 0.5;
+                        a *= 0.5;
+                    }
+                    return v;
+                }
+
+                float smin(float a, float b, float k) {
+                    float h = max(k - abs(a - b), 0.0) / k;
+                    return min(a, b) - h * h * k * 0.25;
                 }
 
                 float map(vec3 p, float t) {
-                    p.xy *= rot(t * 0.3);
-                    p.yz *= rot(t * 0.2);
+                    vec3 q = p;
+                    q.xy *= rot(t * 0.2);
+                    q.yz *= rot(t * 0.15);
 
-                    float d = 1e10;
+                    // Base blob
+                    float d = length(q) - uSphereRadius;
 
-                    // Main torus
-                    d = min(d, sdTorus(p, vec2(uSphereRadius, uSpikeWidth)));
+                    // Morphing turbulence
+                    float turb = fbm(q * 2.0 + t * 0.3) * uSpikeLength * 0.4;
+                    d += turb;
 
-                    // Rotated tori
-                    vec3 p2 = p;
-                    p2.xz *= rot(PI * 0.5);
-                    d = min(d, sdTorus(p2, vec2(uSphereRadius, uSpikeWidth)));
+                    // Traveling waves
+                    float wave1 = sin(q.x * 8.0 + t * 3.0) * sin(q.y * 8.0 - t * 2.0) * sin(q.z * 8.0 + t);
+                    float wave2 = sin(q.x * 12.0 - t * 4.0) * cos(q.y * 12.0 + t * 3.0);
+                    d += (wave1 * 0.08 + wave2 * 0.05) * uSmoothing * 3.0;
 
-                    vec3 p3 = p;
-                    p3.xy *= rot(PI * 0.5);
-                    d = min(d, sdTorus(p3, vec2(uSphereRadius, uSpikeWidth)));
+                    // Dripping tendrils
+                    for(int i = 0; i < 4; i++) {
+                        vec3 tp = q;
+                        float angle = float(i) * TAU / 4.0 + t * 0.3;
+                        tp.xz *= rot(angle);
+                        float tendril = length(tp.xz) - 0.15 * uSpikeWidth * 5.0;
+                        float drop = tp.y + uSphereRadius + sin(t * 2.0 + float(i)) * 0.5 * uSpikeLength;
+                        tendril = max(tendril, -drop);
+                        tendril = max(tendril, tp.y - uSphereRadius * 0.5);
+                        d = smin(d, tendril, 0.3);
+                    }
 
-                    // Spokes
-                    for(int i = 0; i < 6; i++) {
-                        vec3 q = p;
-                        q.xz *= rot(float(i) * PI / 3.0);
-                        d = min(d, sdCappedCylinder(q - vec3(0, 0, 0), uSphereRadius * 1.2, uSpikeWidth * 0.5));
+                    // Rippling surface detail
+                    float ripple = sin(length(q.xz) * 15.0 - t * 5.0) * 0.02 * uShellThickness * 3.0;
+                    d += ripple;
+
+                    return d * 0.8;
+                }
+
+                vec3 calcNormal(vec3 p, float t) {
+                    vec2 e = vec2(0.0005, 0.0);
+                    return normalize(vec3(
+                        map(p + e.xyy, t) - map(p - e.xyy, t),
+                        map(p + e.yxy, t) - map(p - e.yxy, t),
+                        map(p + e.yyx, t) - map(p - e.yyx, t)
+                    ));
+                }
+
+                vec3 envMap(vec3 rd, float t) {
+                    // Fake HDR environment
+                    vec3 col = uBgColor * 0.5;
+
+                    // Gradient sky
+                    col += uAmbientColor * smoothstep(-0.5, 0.5, rd.y) * 0.5;
+
+                    // Fake studio lights
+                    float light1 = pow(max(dot(rd, normalize(vec3(1, 1, 0.5))), 0.0), 32.0);
+                    float light2 = pow(max(dot(rd, normalize(vec3(-1, 0.5, -0.5))), 0.0), 16.0);
+                    float light3 = pow(max(dot(rd, normalize(vec3(0, -1, 0))), 0.0), 8.0);
+
+                    col += uLightColor * light1 * 2.0;
+                    col += uObjectColor * light2;
+                    col += uAmbientColor * light3 * 0.5;
+
+                    // Animated caustic pattern
+                    float caustic = fbm(rd * 5.0 + t * 0.5);
+                    col += caustic * 0.1;
+
+                    return col;
+                }
+
+                void main() {
+                    float t = iTime * uSpeed + uTimeOffset;
+                    vec2 uv = (gl_FragCoord.xy * 2.0 - iResolution.xy) / iResolution.y;
+                    vec2 m = iMouse.xy / iResolution.xy;
+                    if(iMouse.z < 0.5) m = vec2(0.5, 0.5);
+
+                    vec3 ro = vec3(0.0, uCamHeight * 0.5, uZoom);
+                    ro.xz *= rot((m.x - 0.5) * TAU);
+                    ro.yz *= rot((m.y - 0.5) * PI * 0.5);
+
+                    vec3 ta = vec3(0.0);
+                    vec3 ww = normalize(ta - ro);
+                    vec3 uu = normalize(cross(ww, vec3(0, 1, 0)));
+                    vec3 vv = cross(uu, ww);
+                    vec3 rd = normalize(uv.x * uu + uv.y * vv + uFov * ww);
+
+                    float d = 0.0;
+                    vec3 p;
+
+                    for(int i = 0; i < 100; i++) {
+                        p = ro + rd * d;
+                        float h = map(p, t);
+                        if(h < 0.0003 || d > 15.0) break;
+                        d += h;
+                    }
+
+                    vec3 col = envMap(rd, t);
+
+                    if(d < 15.0) {
+                        vec3 n = calcNormal(p, t);
+                        vec3 l = normalize(uLightDir);
+
+                        // Multiple reflections
+                        vec3 ref = reflect(rd, n);
+                        vec3 ref2 = reflect(ref, n + noise(p * 10.0 + t) * 0.1);
+
+                        // Fresnel
+                        float fres = pow(1.0 - abs(dot(n, -rd)), 4.0);
+                        fres = mix(0.2, 1.0, fres);
+
+                        // Environment reflection
+                        vec3 envCol = envMap(ref, t);
+                        vec3 envCol2 = envMap(ref2, t) * 0.5;
+
+                        // Specular highlights
+                        float spec1 = pow(max(dot(ref, l), 0.0), 64.0);
+                        float spec2 = pow(max(dot(ref, normalize(vec3(-1, 1, 0))), 0.0), 32.0);
+                        float spec3 = pow(max(dot(ref, normalize(vec3(0, 1, -1))), 0.0), 48.0);
+
+                        // Base metal color
+                        vec3 metalCol = uObjectColor * 0.3;
+
+                        // Anisotropic-like streaks
+                        float aniso = abs(sin(atan(n.z, n.x) * 20.0 + t));
+                        metalCol += uLightColor * aniso * 0.1;
+
+                        // Combine
+                        col = metalCol * (1.0 - fres);
+                        col += envCol * fres;
+                        col += envCol2 * fres * 0.3;
+                        col += uLightColor * spec1 * 3.0;
+                        col += uObjectColor * spec2 * 1.5;
+                        col += uAmbientColor * spec3;
+
+                        // Subsurface scattering fake
+                        float sss = pow(max(dot(-rd, -l), 0.0), 2.0) * 0.1;
+                        col += uObjectColor * sss;
+
+                        // Edge glow
+                        float edge = pow(1.0 - abs(dot(n, -rd)), 2.0);
+                        col += uLightColor * edge * 0.3;
+                    }
+
+                    // Tone mapping
+                    col = col / (col + 1.0);
+
+                    // Contrast
+                    col = pow(col, vec3(0.9));
+
+                    col = pow(col, vec3(1.0/2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 8: Quantum Flux
+            quantumFlux: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                #define PI 3.14159265359
+                #define TAU 6.28318530718
+
+                mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+                float hash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+
+                vec3 palette(float t) {
+                    return 0.5 + 0.5 * cos(TAU * (vec3(0.0, 0.33, 0.67) + t));
+                }
+
+                float quantumField(vec3 p, float t) {
+                    float d = 0.0;
+                    float scale = 1.0;
+                    for(int i = 0; i < 5; i++) {
+                        vec3 q = p * scale;
+                        q.xy *= rot(t * 0.3 * float(i + 1));
+                        q.yz *= rot(t * 0.2 * float(i + 1));
+                        float wave = sin(q.x * 3.0) * sin(q.y * 3.0) * sin(q.z * 3.0);
+                        d += wave / scale;
+                        scale *= 2.0;
+                    }
+                    return d * 0.2;
+                }
+
+                float map(vec3 p, float t) {
+                    vec3 q = p;
+                    q.xy *= rot(t * 0.1);
+                    q.yz *= rot(t * 0.07);
+
+                    float sphere = length(q) - uSphereRadius;
+                    float field = quantumField(q, t) * uSpikeLength;
+                    float d = sphere + field;
+
+                    // Probability clouds
+                    float cloud = sin(q.x * 5.0 + t) * sin(q.y * 5.0 - t * 0.7) * sin(q.z * 5.0 + t * 0.5);
+                    d += cloud * uSmoothing * 0.5;
+
+                    // Orbiting particles (implicit)
+                    for(int i = 0; i < 3; i++) {
+                        float angle = t * (0.5 + float(i) * 0.3) + float(i) * TAU / 3.0;
+                        vec3 orbit = vec3(cos(angle), sin(angle * 0.7), sin(angle)) * uSphereRadius * (1.5 + float(i) * 0.3);
+                        float particle = length(q - orbit) - 0.1 * uSpikeWidth * 5.0;
+                        d = min(d, particle);
                     }
 
                     return d;
@@ -1617,47 +2438,574 @@
                     ));
                 }
 
-                float glow(float d) {
-                    return uSmoothing / (abs(d) + uSmoothing);
+                void main() {
+                    float t = iTime * uSpeed + uTimeOffset;
+                    vec2 uv = (gl_FragCoord.xy * 2.0 - iResolution.xy) / iResolution.y;
+                    vec2 m = iMouse.xy / iResolution.xy;
+                    if(iMouse.z < 0.5) m = vec2(0.5);
+
+                    vec3 ro = vec3(0.0, uCamHeight, uZoom);
+                    ro.xz *= rot(m.x * TAU);
+                    ro.yz *= rot((m.y - 0.5) * PI * 0.5);
+
+                    vec3 ta = vec3(0.0);
+                    vec3 ww = normalize(ta - ro);
+                    vec3 uu = normalize(cross(ww, vec3(0, 1, 0)));
+                    vec3 vv = cross(uu, ww);
+                    vec3 rd = normalize(uv.x * uu + uv.y * vv + uFov * ww);
+
+                    float d = 0.0;
+                    vec3 p;
+                    float glow = 0.0;
+                    vec3 glowCol = vec3(0.0);
+
+                    for(int i = 0; i < 100; i++) {
+                        p = ro + rd * d;
+                        float h = map(p, t);
+                        float g = uSmoothing / (abs(h) + uSmoothing * 0.5);
+                        glow += g * 0.01;
+                        glowCol += palette(length(p) * 0.5 - t * 0.3) * g * 0.015;
+                        if(h < 0.001 || d > 20.0) break;
+                        d += h * 0.8;
+                    }
+
+                    vec3 col = uBgColor;
+                    col += glowCol;
+                    col += uObjectColor * glow * 0.3;
+
+                    if(d < 20.0) {
+                        vec3 n = calcNormal(p, t);
+                        vec3 l = normalize(uLightDir);
+                        float diff = max(dot(n, l), 0.0);
+                        float spec = pow(max(dot(reflect(-l, n), -rd), 0.0), 32.0);
+                        float fres = pow(1.0 - abs(dot(n, rd)), 3.0);
+
+                        vec3 qCol = palette(dot(p, vec3(1.0)) * 0.2 + t * 0.2);
+                        col = qCol * (uAmbient + diff * uDiffuse);
+                        col += uLightColor * spec * 2.0;
+                        col += uLightColor * fres;
+
+                        // Quantum interference pattern
+                        float interference = sin(length(p) * 20.0 - t * 5.0) * 0.5 + 0.5;
+                        col *= 0.8 + interference * 0.4;
+                    }
+
+                    col = pow(col, vec3(1.0/2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 9: Void Tendrils
+            voidTendrils: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                #define PI 3.14159265359
+                #define TAU 6.28318530718
+
+                mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+                float hash(float n) { return fract(sin(n) * 43758.5453); }
+
+                float noise(vec3 p) {
+                    vec3 i = floor(p), f = fract(p);
+                    f = f * f * (3.0 - 2.0 * f);
+                    float n = i.x + i.y * 57.0 + i.z * 113.0;
+                    return mix(mix(mix(hash(n), hash(n + 1.0), f.x),
+                                   mix(hash(n + 57.0), hash(n + 58.0), f.x), f.y),
+                               mix(mix(hash(n + 113.0), hash(n + 114.0), f.x),
+                                   mix(hash(n + 170.0), hash(n + 171.0), f.x), f.y), f.z);
+                }
+
+                float tendril(vec3 p, float t, float id) {
+                    float angle = id * TAU / 8.0;
+                    p.xz *= rot(angle);
+                    p.xy *= rot(sin(t * 0.5 + id) * 0.5);
+
+                    // Spiral path
+                    float spiral = atan(p.z, p.x) + p.y * 2.0 + t;
+                    p.xz *= rot(spiral * 0.2);
+
+                    float r = length(p.xz) - 0.1 - sin(p.y * 3.0 + t * 2.0 + id * 2.0) * 0.05 * uSpikeWidth * 5.0;
+                    r = abs(r) - 0.02;
+
+                    float bounds = smoothstep(uSphereRadius * 3.0 * uSpikeLength, 0.0, abs(p.y));
+                    return r / bounds - 0.001;
+                }
+
+                float map(vec3 p, float t) {
+                    vec3 q = p;
+                    q.xy *= rot(t * 0.1);
+                    q.yz *= rot(t * 0.07);
+
+                    float d = 1e10;
+
+                    // Central void
+                    float core = length(q) - uSphereRadius * 0.3;
+                    core = -core; // Invert for hollow sphere
+
+                    // Tendrils
+                    for(int i = 0; i < 8; i++) {
+                        float tend = tendril(q, t, float(i));
+                        d = min(d, tend);
+                    }
+
+                    // Event horizon
+                    float horizon = abs(length(q) - uSphereRadius) - uShellThickness * 0.5;
+                    d = min(d, horizon);
+
+                    // Accretion disk
+                    float disk = abs(q.y) - 0.02;
+                    float diskR = length(q.xz) - uSphereRadius * 1.5;
+                    float diskOuter = length(q.xz) - uSphereRadius * 2.5;
+                    disk = max(disk, diskR);
+                    disk = max(disk, -diskOuter);
+                    d = min(d, disk);
+
+                    return d;
+                }
+
+                vec3 calcNormal(vec3 p, float t) {
+                    vec2 e = vec2(0.001, 0.0);
+                    return normalize(vec3(
+                        map(p + e.xyy, t) - map(p - e.xyy, t),
+                        map(p + e.yxy, t) - map(p - e.yxy, t),
+                        map(p + e.yyx, t) - map(p - e.yyx, t)
+                    ));
                 }
 
                 void main() {
                     float t = iTime * uSpeed + uTimeOffset;
                     vec2 uv = (gl_FragCoord.xy * 2.0 - iResolution.xy) / iResolution.y;
                     vec2 m = iMouse.xy / iResolution.xy;
+                    if(iMouse.z < 0.5) m = vec2(0.3, 0.4);
 
-                    vec3 ro = vec3(0.0, uCamHeight - 1.0, uZoom - m.y * 2.0);
-                    vec3 rd = normalize(vec3(uv, -uFov));
+                    vec3 ro = vec3(0.0, uCamHeight, uZoom + 2.0);
+                    ro.xz *= rot(m.x * TAU);
+                    ro.yz *= rot((m.y - 0.5) * PI * 0.5);
+
+                    vec3 ta = vec3(0.0);
+                    vec3 ww = normalize(ta - ro);
+                    vec3 uu = normalize(cross(ww, vec3(0, 1, 0)));
+                    vec3 vv = cross(uu, ww);
+                    vec3 rd = normalize(uv.x * uu + uv.y * vv + uFov * ww);
 
                     float d = 0.0;
                     vec3 p;
-                    float glowAccum = 0.0;
+                    float glow = 0.0;
 
-                    for(int i = 0; i < 80; i++) {
+                    for(int i = 0; i < 120; i++) {
                         p = ro + rd * d;
                         float h = map(p, t);
-                        glowAccum += glow(h) * 0.02;
-                        if(h < 0.001 || d > 15.0) break;
-                        d += h;
+
+                        // Glow accumulation
+                        float g = uSmoothing / (abs(h) + uSmoothing);
+                        glow += g * 0.008;
+
+                        if(h < 0.001 || d > 25.0) break;
+                        d += h * 0.7;
                     }
 
-                    vec3 col = uBgColor;
+                    // Deep void background
+                    vec3 col = uBgColor * 0.3;
 
-                    // Add glow
-                    col += uObjectColor * glowAccum * 0.5;
-                    col += uLightColor * glowAccum * 0.3;
+                    // Distant stars
+                    float stars = noise(rd * 500.0);
+                    if(stars > 0.98) col += vec3(stars - 0.98) * 50.0;
 
-                    if(d < 15.0) {
+                    // Glow
+                    col += uObjectColor * glow * 0.4;
+                    col += uLightColor * glow * 0.2;
+
+                    if(d < 25.0) {
                         vec3 n = calcNormal(p, t);
                         vec3 l = normalize(uLightDir);
                         float diff = max(dot(n, l), 0.0);
                         float fres = pow(1.0 - abs(dot(n, rd)), 2.0);
 
-                        col = uObjectColor * 2.0;
-                        col += fres * uLightColor;
+                        // Void energy coloring
+                        float energy = sin(length(p) * 10.0 - t * 3.0) * 0.5 + 0.5;
+                        vec3 voidCol = mix(uObjectColor, uLightColor, energy);
+
+                        col = voidCol * (uAmbient * 0.5 + diff * uDiffuse);
+                        col += uLightColor * fres * 1.5;
+
+                        // Gravitational distortion at edges
+                        float distort = 1.0 - smoothstep(0.0, uSphereRadius, length(p));
+                        col *= 1.0 + distort * 2.0;
                     }
 
-                    col = pow(col, vec3(1.0 / 2.2));
+                    // Central darkness
+                    float darkness = smoothstep(uSphereRadius * 0.5, 0.0, length(p));
+                    col *= 1.0 - darkness * 0.8;
+
+                    col = pow(col, vec3(1.0/2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 10: Prismatic Storm
+            prismaticStorm: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                #define PI 3.14159265359
+                #define TAU 6.28318530718
+
+                mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+                mat3 rotX(float a) { float c = cos(a), s = sin(a); return mat3(1,0,0, 0,c,-s, 0,s,c); }
+                mat3 rotY(float a) { float c = cos(a), s = sin(a); return mat3(c,0,s, 0,1,0, -s,0,c); }
+
+                float hash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+
+                vec3 hsv2rgb(vec3 c) {
+                    vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+                    return c.z * mix(vec3(1.0), rgb, c.y);
+                }
+
+                float sdOctahedron(vec3 p, float s) {
+                    p = abs(p);
+                    return (p.x + p.y + p.z - s) * 0.57735027;
+                }
+
+                float sdPrism(vec3 p, vec2 h) {
+                    vec3 q = abs(p);
+                    return max(q.z - h.y, max(q.x * 0.866025 + p.y * 0.5, -p.y) - h.x * 0.5);
+                }
+
+                float map(vec3 p, float t) {
+                    vec3 q = p;
+                    q = rotY(t * 0.2) * rotX(t * 0.15) * q;
+
+                    float d = 1e10;
+
+                    // Central crystal cluster
+                    for(int i = 0; i < 6; i++) {
+                        vec3 cp = q;
+                        float angle = float(i) * TAU / 6.0 + t * 0.3;
+                        cp.xz *= rot(angle);
+                        cp.y += sin(t + float(i)) * 0.2 * uSpikeLength;
+
+                        float crystal = sdOctahedron(cp, uSphereRadius * (0.5 + float(i) * 0.1));
+                        d = min(d, crystal);
+                    }
+
+                    // Orbiting prisms
+                    for(int i = 0; i < 8; i++) {
+                        float orbitAngle = float(i) * TAU / 8.0 + t * 0.5;
+                        float orbitR = uSphereRadius * 2.0;
+                        vec3 orbitPos = vec3(cos(orbitAngle) * orbitR, sin(t * 0.7 + float(i)) * 0.5, sin(orbitAngle) * orbitR);
+
+                        vec3 pp = q - orbitPos;
+                        pp = rotY(t * 2.0 + float(i)) * rotX(t * 1.5) * pp;
+
+                        float prism = sdPrism(pp, vec2(0.2 * uSpikeWidth * 5.0, 0.4 * uSpikeWidth * 5.0));
+                        d = min(d, prism);
+                    }
+
+                    // Energy field shell
+                    float shell = abs(length(q) - uSphereRadius * 1.5) - uShellThickness * 0.3;
+                    float noise = sin(q.x * 10.0 + t) * sin(q.y * 10.0 - t) * sin(q.z * 10.0);
+                    shell += noise * uSmoothing * 0.5;
+                    d = min(d, shell);
+
+                    return d;
+                }
+
+                vec3 calcNormal(vec3 p, float t) {
+                    vec2 e = vec2(0.001, 0.0);
+                    return normalize(vec3(
+                        map(p + e.xyy, t) - map(p - e.xyy, t),
+                        map(p + e.yxy, t) - map(p - e.yxy, t),
+                        map(p + e.yyx, t) - map(p - e.yyx, t)
+                    ));
+                }
+
+                void main() {
+                    float t = iTime * uSpeed + uTimeOffset;
+                    vec2 uv = (gl_FragCoord.xy * 2.0 - iResolution.xy) / iResolution.y;
+                    vec2 m = iMouse.xy / iResolution.xy;
+                    if(iMouse.z < 0.5) m = vec2(0.5);
+
+                    vec3 ro = vec3(0.0, uCamHeight, uZoom + 1.0);
+                    ro.xz *= rot(m.x * TAU);
+                    ro.yz *= rot((m.y - 0.5) * PI * 0.5);
+
+                    vec3 ta = vec3(0.0);
+                    vec3 ww = normalize(ta - ro);
+                    vec3 uu = normalize(cross(ww, vec3(0, 1, 0)));
+                    vec3 vv = cross(uu, ww);
+                    vec3 rd = normalize(uv.x * uu + uv.y * vv + uFov * ww);
+
+                    float d = 0.0;
+                    vec3 p;
+                    float glow = 0.0;
+                    vec3 glowCol = vec3(0.0);
+
+                    for(int i = 0; i < 100; i++) {
+                        p = ro + rd * d;
+                        float h = map(p, t);
+
+                        float g = uSmoothing / (abs(h) + uSmoothing * 0.3);
+                        float hue = fract(length(p) * 0.3 - t * 0.2);
+                        glowCol += hsv2rgb(vec3(hue, 0.8, 1.0)) * g * 0.015;
+                        glow += g * 0.01;
+
+                        if(h < 0.001 || d > 20.0) break;
+                        d += h * 0.8;
+                    }
+
+                    vec3 col = uBgColor;
+                    col += glowCol;
+
+                    if(d < 20.0) {
+                        vec3 n = calcNormal(p, t);
+                        vec3 l = normalize(uLightDir);
+                        float diff = max(dot(n, l), 0.0);
+                        float spec = pow(max(dot(reflect(-l, n), -rd), 0.0), 64.0);
+                        float fres = pow(1.0 - abs(dot(n, rd)), 3.0);
+
+                        // Rainbow refraction
+                        float hue = fract(dot(p, n) * 0.5 + t * 0.1);
+                        vec3 crystalCol = hsv2rgb(vec3(hue, 0.6, 1.0));
+
+                        col = crystalCol * (uAmbient + diff * uDiffuse);
+                        col += uLightColor * spec * 3.0;
+                        col += hsv2rgb(vec3(fract(hue + 0.5), 0.8, 1.0)) * fres;
+
+                        // Internal glow
+                        col += uObjectColor * glow * 0.3;
+                    }
+
+                    // Bloom
+                    col += glowCol * 0.5;
+
+                    col = pow(col, vec3(1.0/2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 11: Biomech Entity
+            biomechEntity: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                #define PI 3.14159265359
+                #define TAU 6.28318530718
+
+                mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+
+                float smin(float a, float b, float k) {
+                    float h = max(k - abs(a - b), 0.0) / k;
+                    return min(a, b) - h * h * k * 0.25;
+                }
+
+                float hash(float n) { return fract(sin(n) * 43758.5453); }
+
+                float noise(vec3 p) {
+                    vec3 i = floor(p), f = fract(p);
+                    f = f * f * (3.0 - 2.0 * f);
+                    float n = i.x + i.y * 57.0 + i.z * 113.0;
+                    return mix(mix(mix(hash(n), hash(n + 1.0), f.x),
+                                   mix(hash(n + 57.0), hash(n + 58.0), f.x), f.y),
+                               mix(mix(hash(n + 113.0), hash(n + 114.0), f.x),
+                                   mix(hash(n + 170.0), hash(n + 171.0), f.x), f.y), f.z);
+                }
+
+                float fbm(vec3 p) {
+                    float v = 0.0, a = 0.5;
+                    for(int i = 0; i < 4; i++) {
+                        v += a * noise(p);
+                        p *= 2.0;
+                        a *= 0.5;
+                    }
+                    return v;
+                }
+
+                float sdCapsule(vec3 p, vec3 a, vec3 b, float r) {
+                    vec3 pa = p - a, ba = b - a;
+                    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+                    return length(pa - ba * h) - r;
+                }
+
+                float map(vec3 p, float t) {
+                    vec3 q = p;
+                    q.xy *= rot(t * 0.15);
+                    q.yz *= rot(t * 0.1);
+
+                    // Core body - organic shape
+                    float body = length(q) - uSphereRadius;
+                    body += fbm(q * 3.0 + t * 0.5) * 0.3 * uSmoothing * 3.0;
+
+                    float d = body;
+
+                    // Mechanical limbs
+                    for(int i = 0; i < 6; i++) {
+                        vec3 lp = q;
+                        float angle = float(i) * TAU / 6.0;
+                        lp.xz *= rot(angle);
+
+                        // Articulated segments
+                        float phase = t * 0.5 + float(i);
+                        vec3 joint1 = vec3(uSphereRadius, 0, 0);
+                        vec3 joint2 = joint1 + vec3(uSpikeLength * 0.8, sin(phase) * 0.3, cos(phase * 0.7) * 0.2);
+                        vec3 joint3 = joint2 + vec3(uSpikeLength * 0.6, sin(phase * 1.3) * 0.2, cos(phase) * 0.3);
+
+                        float seg1 = sdCapsule(lp, vec3(0), joint1, uSpikeWidth * 1.5);
+                        float seg2 = sdCapsule(lp, joint1, joint2, uSpikeWidth);
+                        float seg3 = sdCapsule(lp, joint2, joint3, uSpikeWidth * 0.7);
+
+                        // Joints
+                        float jnt1 = length(lp - joint1) - uSpikeWidth * 2.0;
+                        float jnt2 = length(lp - joint2) - uSpikeWidth * 1.5;
+
+                        float limb = min(seg1, min(seg2, seg3));
+                        limb = min(limb, min(jnt1, jnt2));
+
+                        d = smin(d, limb, 0.15);
+                    }
+
+                    // Pulsing veins on surface
+                    float veinPhase = t * 2.0;
+                    float veins = sin(q.x * 15.0 + veinPhase) * sin(q.y * 15.0 - veinPhase * 0.7);
+                    veins = abs(veins) - 0.1;
+                    float veinMask = smoothstep(uSphereRadius + 0.1, uSphereRadius - 0.1, length(q));
+                    d = min(d, max(veins * 0.1, body - 0.05) * veinMask + body * (1.0 - veinMask));
+
+                    // Mechanical plates
+                    float plates = abs(mod(atan(q.z, q.x) * 3.0 / PI + 0.5, 1.0) - 0.5) - uShellThickness;
+                    plates = max(plates * 0.5, body - 0.02);
+                    d = min(d, plates);
+
+                    return d;
+                }
+
+                vec3 calcNormal(vec3 p, float t) {
+                    vec2 e = vec2(0.001, 0.0);
+                    return normalize(vec3(
+                        map(p + e.xyy, t) - map(p - e.xyy, t),
+                        map(p + e.yxy, t) - map(p - e.yxy, t),
+                        map(p + e.yyx, t) - map(p - e.yyx, t)
+                    ));
+                }
+
+                void main() {
+                    float t = iTime * uSpeed + uTimeOffset;
+                    vec2 uv = (gl_FragCoord.xy * 2.0 - iResolution.xy) / iResolution.y;
+                    vec2 m = iMouse.xy / iResolution.xy;
+                    if(iMouse.z < 0.5) m = vec2(0.5);
+
+                    vec3 ro = vec3(0.0, uCamHeight, uZoom + 1.5);
+                    ro.xz *= rot(m.x * TAU);
+                    ro.yz *= rot((m.y - 0.5) * PI * 0.5);
+
+                    vec3 ta = vec3(0.0);
+                    vec3 ww = normalize(ta - ro);
+                    vec3 uu = normalize(cross(ww, vec3(0, 1, 0)));
+                    vec3 vv = cross(uu, ww);
+                    vec3 rd = normalize(uv.x * uu + uv.y * vv + uFov * ww);
+
+                    float d = 0.0;
+                    vec3 p;
+                    float glow = 0.0;
+
+                    for(int i = 0; i < 100; i++) {
+                        p = ro + rd * d;
+                        float h = map(p, t);
+                        glow += uSmoothing / (abs(h) + uSmoothing) * 0.008;
+                        if(h < 0.001 || d > 20.0) break;
+                        d += h * 0.8;
+                    }
+
+                    vec3 col = uBgColor;
+
+                    if(d < 20.0) {
+                        vec3 n = calcNormal(p, t);
+                        vec3 l = normalize(uLightDir);
+                        float diff = max(dot(n, l), 0.0);
+                        float spec = pow(max(dot(reflect(-l, n), -rd), 0.0), 32.0);
+                        float fres = pow(1.0 - abs(dot(n, rd)), 2.0);
+
+                        // Organic/mechanical blend coloring
+                        float organic = fbm(p * 5.0);
+                        vec3 organicCol = mix(uObjectColor, uObjectColor * 0.3, organic);
+                        vec3 mechCol = uLightColor * 0.5;
+
+                        float blend = smoothstep(0.4, 0.6, organic);
+                        vec3 baseCol = mix(organicCol, mechCol, blend);
+
+                        col = baseCol * (uAmbient + diff * uDiffuse);
+                        col += uLightColor * spec * 1.5;
+                        col += uLightColor * fres * 0.5;
+
+                        // Bioluminescent glow
+                        float pulse = sin(t * 3.0) * 0.5 + 0.5;
+                        col += uLightColor * glow * pulse * 0.5;
+                    }
+
+                    // Ambient glow
+                    col += uObjectColor * glow * 0.2;
+
+                    col = pow(col, vec3(1.0/2.2));
                     gl_FragColor = vec4(col, 1.0);
                 }
             `
@@ -1722,10 +3070,51 @@
                 { name: 'Void', speed: 0.15, timeOffset: 5, zoom: 6, fov: 3, camHeight: 2, spikeLength: 1, spikeWidth: 0.1, shellThickness: 0.08, sphereRadius: 1.5, smoothing: 0.25, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.2, diffuse: 0.3, shadowSoft: 1, objectColor: '#444466', lightColor: '#666688', ambientColor: '#222244', bgColor: '#000000' },
                 { name: 'Gold', speed: 0.8, timeOffset: 0, zoom: 4.2, fov: 2, camHeight: 1, spikeLength: 1, spikeWidth: 0.055, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.1, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.7, diffuse: 1.4, shadowSoft: 10, objectColor: '#ffaa00', lightColor: '#ffddaa', ambientColor: '#884400', bgColor: '#080500' },
                 { name: 'Matrix', speed: 1.5, timeOffset: 2, zoom: 3.8, fov: 2.2, camHeight: 0.8, spikeLength: 1, spikeWidth: 0.045, shellThickness: 0.025, sphereRadius: 0.95, smoothing: 0.08, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.85, diffuse: 1.7, shadowSoft: 8, objectColor: '#00ff00', lightColor: '#88ff88', ambientColor: '#003300', bgColor: '#000600' }
+            ],
+            5: [ // Galactic Vortex
+                { name: 'Default', speed: 0.2, timeOffset: 0, zoom: 5, fov: 2, camHeight: 0.5, spikeLength: 0.5, spikeWidth: 0.05, shellThickness: 0.02, sphereRadius: 1.5, smoothing: 0.1, lightX: 0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.2, diffuse: 0.8, shadowSoft: 10, objectColor: '#440088', lightColor: '#ff00aa', ambientColor: '#110022', bgColor: '#000000' },
+                { name: 'Nebula', speed: 0.1, timeOffset: 0, zoom: 6, fov: 2.5, camHeight: 0.2, spikeLength: 0.8, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1.8, smoothing: 0.2, lightX: -0.5, lightY: 0.2, lightZ: 0.1, ambient: 0.3, diffuse: 1.2, shadowSoft: 5, objectColor: '#aa2200', lightColor: '#ffaa00', ambientColor: '#220000', bgColor: '#050200' },
+                { name: 'Deep Space', speed: 0.15, timeOffset: 10, zoom: 4, fov: 2, camHeight: 0, spikeLength: 1.2, spikeWidth: 0.05, shellThickness: 0.01, sphereRadius: 2.0, smoothing: 0.05, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.1, diffuse: 0.5, shadowSoft: 2, objectColor: '#001133', lightColor: '#4488ff', ambientColor: '#000011', bgColor: '#000005' }
+            ],
+            6: [ // Cyberpunk City
+                { name: 'Default', speed: 0.5, timeOffset: 0, zoom: 4, fov: 2, camHeight: 1.0, spikeLength: 1.0, spikeWidth: 0.05, shellThickness: 0.05, sphereRadius: 1, smoothing: 0.1, lightX: -0.5, lightY: 0.8, lightZ: 0.5, ambient: 0.5, diffuse: 1.5, shadowSoft: 8, objectColor: '#222233', lightColor: '#00ffff', ambientColor: '#110022', bgColor: '#050010' },
+                { name: 'Matrix', speed: 0.8, timeOffset: 0, zoom: 4, fov: 2, camHeight: 0.8, spikeLength: 1.2, spikeWidth: 0.03, shellThickness: 0.08, sphereRadius: 1, smoothing: 0.05, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.2, diffuse: 2.0, shadowSoft: 5, objectColor: '#002200', lightColor: '#00ff00', ambientColor: '#001100', bgColor: '#000000' },
+                { name: 'Sunset', speed: 0.4, timeOffset: 0, zoom: 5, fov: 1.8, camHeight: 1.5, spikeLength: 0.8, spikeWidth: 0.06, shellThickness: 0.04, sphereRadius: 1, smoothing: 0.15, lightX: 0.8, lightY: 0.4, lightZ: -0.2, ambient: 0.6, diffuse: 1.2, shadowSoft: 12, objectColor: '#331122', lightColor: '#ffaa00', ambientColor: '#440022', bgColor: '#110011' }
+            ],
+            7: [ // Liquid Metal
+                { name: 'Chrome', speed: 1.0, timeOffset: 0, zoom: 3, fov: 2, camHeight: 0, spikeLength: 1.0, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1.2, smoothing: 0.2, lightX: 0.5, lightY: 0.8, lightZ: 0.5, ambient: 0.8, diffuse: 1.0, shadowSoft: 15, objectColor: '#cccccc', lightColor: '#ffffff', ambientColor: '#888899', bgColor: '#222222' },
+                { name: 'Gold', speed: 0.8, timeOffset: 0, zoom: 3.2, fov: 2, camHeight: 0, spikeLength: 0.8, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1.2, smoothing: 0.25, lightX: -0.5, lightY: 0.6, lightZ: 0.4, ambient: 0.7, diffuse: 1.3, shadowSoft: 12, objectColor: '#aa8822', lightColor: '#ffeeaa', ambientColor: '#442200', bgColor: '#110800' },
+                { name: 'Mercury', speed: 1.5, timeOffset: 0, zoom: 2.8, fov: 2.2, camHeight: 0, spikeLength: 1.5, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1.1, smoothing: 0.1, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.5, diffuse: 1.8, shadowSoft: 20, objectColor: '#8888aa', lightColor: '#ccddff', ambientColor: '#444455', bgColor: '#050510' },
+                { name: 'Obsidian', speed: 0.6, timeOffset: 0, zoom: 3.5, fov: 2, camHeight: 0, spikeLength: 0.6, spikeWidth: 0.06, shellThickness: 0.04, sphereRadius: 1.3, smoothing: 0.15, lightX: 0.3, lightY: 0.9, lightZ: 0.3, ambient: 0.3, diffuse: 1.5, shadowSoft: 8, objectColor: '#333344', lightColor: '#8888ff', ambientColor: '#222233', bgColor: '#0a0a15' },
+                { name: 'Copper', speed: 0.9, timeOffset: 0, zoom: 3, fov: 2, camHeight: 0, spikeLength: 1.2, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1.15, smoothing: 0.18, lightX: -0.4, lightY: 0.7, lightZ: 0.5, ambient: 0.6, diffuse: 1.4, shadowSoft: 10, objectColor: '#cc7744', lightColor: '#ffddbb', ambientColor: '#553322', bgColor: '#100805' }
+            ],
+            8: [ // Quantum Flux
+                { name: 'Entangled', speed: 0.8, timeOffset: 0, zoom: 4, fov: 2, camHeight: 0.5, spikeLength: 1.0, spikeWidth: 0.06, shellThickness: 0.03, sphereRadius: 1.2, smoothing: 0.15, lightX: 0.5, lightY: 0.8, lightZ: 0.3, ambient: 0.6, diffuse: 1.3, shadowSoft: 10, objectColor: '#6644ff', lightColor: '#ff44ff', ambientColor: '#331188', bgColor: '#0a0015' },
+                { name: 'Superposition', speed: 1.2, timeOffset: 0, zoom: 3.5, fov: 2.2, camHeight: 0.3, spikeLength: 1.5, spikeWidth: 0.05, shellThickness: 0.02, sphereRadius: 1.0, smoothing: 0.2, lightX: -0.3, lightY: 0.9, lightZ: 0.4, ambient: 0.7, diffuse: 1.5, shadowSoft: 8, objectColor: '#44ffaa', lightColor: '#88ffff', ambientColor: '#226655', bgColor: '#000a08' },
+                { name: 'Collapse', speed: 2.0, timeOffset: 0, zoom: 3, fov: 1.8, camHeight: 0, spikeLength: 2.0, spikeWidth: 0.08, shellThickness: 0.04, sphereRadius: 0.9, smoothing: 0.25, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.4, diffuse: 2.0, shadowSoft: 5, objectColor: '#ff4466', lightColor: '#ffaacc', ambientColor: '#661133', bgColor: '#100008' },
+                { name: 'Uncertainty', speed: 0.5, timeOffset: 2, zoom: 5, fov: 2.5, camHeight: 1, spikeLength: 0.5, spikeWidth: 0.04, shellThickness: 0.02, sphereRadius: 1.5, smoothing: 0.1, lightX: 0.6, lightY: 0.6, lightZ: 0.6, ambient: 0.8, diffuse: 1.0, shadowSoft: 15, objectColor: '#aaaaff', lightColor: '#ffffff', ambientColor: '#555588', bgColor: '#050510' }
+            ],
+            9: [ // Void Tendrils
+                { name: 'Abyss', speed: 0.6, timeOffset: 0, zoom: 5, fov: 2, camHeight: 0.5, spikeLength: 1.5, spikeWidth: 0.05, shellThickness: 0.04, sphereRadius: 1.0, smoothing: 0.12, lightX: 0, lightY: 0.8, lightZ: 0.5, ambient: 0.3, diffuse: 1.5, shadowSoft: 5, objectColor: '#4400aa', lightColor: '#aa00ff', ambientColor: '#220055', bgColor: '#000005' },
+                { name: 'Eldritch', speed: 0.4, timeOffset: 0, zoom: 6, fov: 2.2, camHeight: 0.3, spikeLength: 2.0, spikeWidth: 0.04, shellThickness: 0.03, sphereRadius: 0.8, smoothing: 0.08, lightX: -0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.2, diffuse: 1.8, shadowSoft: 3, objectColor: '#00aa44', lightColor: '#44ff88', ambientColor: '#004422', bgColor: '#000500' },
+                { name: 'Cosmic Horror', speed: 0.3, timeOffset: 5, zoom: 7, fov: 2.5, camHeight: 1, spikeLength: 1.0, spikeWidth: 0.06, shellThickness: 0.05, sphereRadius: 1.2, smoothing: 0.15, lightX: 0.3, lightY: 0.9, lightZ: 0.3, ambient: 0.4, diffuse: 1.2, shadowSoft: 8, objectColor: '#664488', lightColor: '#cc88ff', ambientColor: '#332244', bgColor: '#050008' },
+                { name: 'Singularity', speed: 1.0, timeOffset: 0, zoom: 4, fov: 1.8, camHeight: 0, spikeLength: 0.8, spikeWidth: 0.07, shellThickness: 0.06, sphereRadius: 1.5, smoothing: 0.2, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.1, diffuse: 2.5, shadowSoft: 2, objectColor: '#ffffff', lightColor: '#88ffff', ambientColor: '#444466', bgColor: '#000000' }
+            ],
+            10: [ // Prismatic Storm
+                { name: 'Rainbow', speed: 1.0, timeOffset: 0, zoom: 4, fov: 2, camHeight: 0.5, spikeLength: 1.0, spikeWidth: 0.06, shellThickness: 0.04, sphereRadius: 1.2, smoothing: 0.15, lightX: 0.5, lightY: 0.8, lightZ: 0.3, ambient: 0.7, diffuse: 1.3, shadowSoft: 10, objectColor: '#ff8844', lightColor: '#ffffff', ambientColor: '#884422', bgColor: '#0a0508' },
+                { name: 'Aurora', speed: 0.6, timeOffset: 0, zoom: 5, fov: 2.2, camHeight: 0.8, spikeLength: 0.7, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1.5, smoothing: 0.1, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.8, diffuse: 1.0, shadowSoft: 15, objectColor: '#44ff88', lightColor: '#88ffff', ambientColor: '#226644', bgColor: '#000a08' },
+                { name: 'Diamond', speed: 0.4, timeOffset: 0, zoom: 3.5, fov: 1.8, camHeight: 0.3, spikeLength: 0.5, spikeWidth: 0.04, shellThickness: 0.02, sphereRadius: 1.0, smoothing: 0.05, lightX: 0.7, lightY: 0.7, lightZ: 0, ambient: 1.0, diffuse: 2.0, shadowSoft: 20, objectColor: '#aaccff', lightColor: '#ffffff', ambientColor: '#5577aa', bgColor: '#050815' },
+                { name: 'Chaos', speed: 2.0, timeOffset: 0, zoom: 3, fov: 1.5, camHeight: 0, spikeLength: 1.5, spikeWidth: 0.08, shellThickness: 0.05, sphereRadius: 0.8, smoothing: 0.25, lightX: -0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.5, diffuse: 1.8, shadowSoft: 5, objectColor: '#ff4488', lightColor: '#ffff44', ambientColor: '#882244', bgColor: '#100010' }
+            ],
+            11: [ // Biomech Entity
+                { name: 'Organic', speed: 0.8, timeOffset: 0, zoom: 4.5, fov: 2, camHeight: 0.5, spikeLength: 1.2, spikeWidth: 0.06, shellThickness: 0.04, sphereRadius: 1.0, smoothing: 0.15, lightX: 0.4, lightY: 0.8, lightZ: 0.4, ambient: 0.5, diffuse: 1.4, shadowSoft: 10, objectColor: '#884455', lightColor: '#ffaacc', ambientColor: '#442233', bgColor: '#0a0508' },
+                { name: 'Synthetic', speed: 1.2, timeOffset: 0, zoom: 4, fov: 2.2, camHeight: 0.3, spikeLength: 1.5, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1.2, smoothing: 0.1, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.6, diffuse: 1.6, shadowSoft: 8, objectColor: '#448888', lightColor: '#88ffff', ambientColor: '#224444', bgColor: '#000a0a' },
+                { name: 'Xenomorph', speed: 0.5, timeOffset: 0, zoom: 5, fov: 1.8, camHeight: 0.8, spikeLength: 2.0, spikeWidth: 0.04, shellThickness: 0.02, sphereRadius: 0.8, smoothing: 0.08, lightX: -0.3, lightY: 0.6, lightZ: 0.6, ambient: 0.3, diffuse: 1.8, shadowSoft: 5, objectColor: '#334455', lightColor: '#88aacc', ambientColor: '#112233', bgColor: '#000508' },
+                { name: 'Hive Mind', speed: 1.5, timeOffset: 0, zoom: 3.5, fov: 2, camHeight: 0, spikeLength: 0.8, spikeWidth: 0.07, shellThickness: 0.05, sphereRadius: 1.3, smoothing: 0.2, lightX: 0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.4, diffuse: 1.5, shadowSoft: 12, objectColor: '#aa6622', lightColor: '#ffcc88', ambientColor: '#553311', bgColor: '#080500' }
             ]
         };
 
-        const shaderNames = ['Fractal Orb', 'Plasma Sphere', 'Icosahedron Spikes', 'Crystal Matrix', 'Neon Wireframe'];
+        const shaderNames = ['Fractal Orb', 'Plasma Sphere', 'Icosahedron Spikes', 'Crystal Matrix', 'Neon Wireframe', 'Galactic Vortex', 'Cyberpunk City', 'Liquid Metal', 'Quantum Flux', 'Void Tendrils', 'Prismatic Storm', 'Biomech Entity'];
 
         // ============================================
         // WEBGL SETUP
@@ -1798,7 +3187,14 @@
                 shaders.plasmaSphere,
                 shaders.icosahedron,
                 shaders.crystalMatrix,
-                shaders.neonWireframe
+                shaders.neonWireframe,
+                shaders.galacticVortex,
+                shaders.cyberpunkCity,
+                shaders.liquidMetal,
+                shaders.quantumFlux,
+                shaders.voidTendrils,
+                shaders.prismaticStorm,
+                shaders.biomechEntity
             ];
 
             if (program) gl.deleteProgram(program);
@@ -1993,6 +3389,32 @@
 
             // Resize
             window.addEventListener('resize', resizeCanvas);
+
+            // Audio control setup
+            const bgAudio = document.getElementById('bgAudio');
+            const audioControl = document.getElementById('audioControl');
+
+            // Set initial volume to 40% and muted
+            bgAudio.volume = 0.4;
+            bgAudio.muted = true;
+
+            // Start playing (will be muted initially)
+            bgAudio.play().catch(e => console.log('Audio autoplay blocked:', e));
+
+            audioControl.addEventListener('click', function() {
+                if (bgAudio.muted) {
+                    bgAudio.muted = false;
+                    bgAudio.play().catch(e => console.log('Audio play error:', e));
+                    audioControl.textContent = 'PLAYING';
+                    audioControl.classList.add('playing');
+                    audioControl.title = 'Click to mute audio';
+                } else {
+                    bgAudio.muted = true;
+                    audioControl.textContent = 'MUTED';
+                    audioControl.classList.remove('playing');
+                    audioControl.title = 'Click to unmute audio';
+                }
+            });
         }
 
         function randomize() {
@@ -2036,7 +3458,14 @@
                 shaders.plasmaSphere,
                 shaders.icosahedron,
                 shaders.crystalMatrix,
-                shaders.neonWireframe
+                shaders.neonWireframe,
+                shaders.galacticVortex,
+                shaders.cyberpunkCity,
+                shaders.liquidMetal,
+                shaders.quantumFlux,
+                shaders.voidTendrils,
+                shaders.prismaticStorm,
+                shaders.biomechEntity
             ];
 
             let shaderCode = shaderSources[currentShader];
