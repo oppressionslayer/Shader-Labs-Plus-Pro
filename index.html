@@ -592,6 +592,24 @@
                     <option value="8">Void Tendrils</option>
                     <option value="9">Prismatic Storm</option>
                     <option value="10">Biomech Entity</option>
+                    <option value="11">Fractal Cosmos</option>
+                    <option value="12">Plasma Vortex</option>
+                    <option value="13">Neon Boxes</option>
+                    <option value="14">Warp Tunnel</option>
+                    <option value="15">Hyperdrive</option>
+                    <option value="16">Neural Storm</option>
+                    <option value="17">Cosmic Singularity</option>
+                    <option value="18">Dimensional Rift</option>
+                    <option value="19">Stellar Nursery</option>
+                    <option value="20">Cyber Grid</option>
+                    <option value="21">Liquid Aurora</option>
+                    <option value="22">Fractal Flame</option>
+                    <option value="23">Quantum Foam</option>
+                    <option value="24">Tesseract</option>
+                    <option value="25">Digital Rain</option>
+                    <option value="26">Nebula Core</option>
+                    <option value="27">Crystal Cavern</option>
+                    <option value="28">Infinity Mirror</option>
                 </select>
             </div>
 
@@ -2618,6 +2636,1855 @@
                     col = pow(col, vec3(1.0/2.2));
                     gl_FragColor = vec4(col, 1.0);
                 }
+            `,
+
+            // Shader 11: Fractal Cosmos - Based on coyote's shader
+            fractalCosmos: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                mat3 getRotYMat(float a) {
+                    return mat3(cos(a), 0., sin(a), 0., 1., 0., -sin(a), 0., cos(a));
+                }
+
+                mat3 getRotXMat(float a) {
+                    return mat3(1., 0., 0., 0., cos(a), -sin(a), 0., sin(a), cos(a));
+                }
+
+                void main() {
+                    float t = (iTime * uSpeed + uTimeOffset) * 0.2;
+                    vec2 s = iResolution.xy;
+                    float c, d, m;
+                    vec3 p = vec3((2.0 * gl_FragCoord.xy - s) / s.x, uFov);
+                    vec3 r = p - p;
+                    vec3 q = r;
+
+                    p *= getRotYMat(-t);
+                    p *= getRotXMat(t * 0.3);
+                    q.zx += uZoom + vec2(sin(t), cos(t)) * uSpikeLength * 3.0;
+
+                    for (float i = 1.0; i > 0.0; i -= 0.01) {
+                        c = 0.0;
+                        d = 0.0;
+                        m = 1.0;
+                        for (int j = 0; j < 3; j++) {
+                            r = max(r *= r *= r *= r = mod(q * m + 1.0, 2.0) - 1.0, r.yzx);
+                            d = max(d, (uShellThickness - length(r) * 0.6) / m) * 0.8;
+                            m *= 1.1 + uSpikeWidth;
+                        }
+                        q += p * d;
+                        c = i;
+                        if (d < 1e-5) break;
+                    }
+
+                    float k = dot(r, r + uSmoothing);
+                    vec3 baseCol = vec3(1.0, k, k / c) - 0.8;
+                    vec3 col = mix(uBgColor, uObjectColor * baseCol * uDiffuse + uLightColor * k * uAmbient, c);
+                    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 12: Plasma Vortex - Classic plasma effect
+            plasmaVortex: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                void main() {
+                    float t = iTime * uSpeed + uTimeOffset;
+                    vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+                    uv *= uZoom;
+
+                    float v = 0.0;
+                    vec2 c = uv;
+
+                    // Classic plasma waves
+                    v += sin((c.x + t) * uSpikeLength * 3.0);
+                    v += sin((c.y + t) * uSpikeLength * 3.0);
+                    v += sin((c.x + c.y + t) * uSpikeLength * 2.0);
+
+                    c += uSphereRadius * vec2(sin(t / 3.0), cos(t / 2.0));
+                    v += sin(length(c) * uSpikeLength * 5.0 + t);
+
+                    c += uSphereRadius * vec2(sin(t / 2.0), cos(t / 1.5));
+                    v += sin(length(c) * uSpikeLength * 4.0 - t * 1.5);
+
+                    // Swirl effect
+                    float angle = atan(uv.y, uv.x);
+                    float radius = length(uv);
+                    v += sin(angle * uShellThickness * 30.0 + radius * 10.0 - t * 2.0) * 0.5;
+
+                    v = v / 3.5;
+
+                    vec3 col = vec3(
+                        sin(v * 3.14159 + t) * 0.5 + 0.5,
+                        sin(v * 3.14159 + t + 2.094) * 0.5 + 0.5,
+                        sin(v * 3.14159 + t + 4.188) * 0.5 + 0.5
+                    );
+
+                    col = mix(col, uObjectColor, 0.3) * uDiffuse;
+                    col += uLightColor * uAmbient * 0.2;
+                    col = mix(uBgColor, col, 0.9);
+
+                    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 13: Neon Boxes - Rotating animated boxes
+            neonBoxes: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                float gTime = 0.0;
+
+                mat2 rot(float a) {
+                    float c = cos(a), s = sin(a);
+                    return mat2(c, s, -s, c);
+                }
+
+                float sdBox(vec3 p, vec3 b) {
+                    vec3 q = abs(p) - b;
+                    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+                }
+
+                float box(vec3 pos, float scale) {
+                    pos *= scale;
+                    float base = sdBox(pos, vec3(0.4, 0.4, 0.1 * uShellThickness * 10.0)) / 1.5;
+                    pos.xy *= 5.0;
+                    pos.y -= 3.5;
+                    pos.xy *= rot(0.75);
+                    return -base;
+                }
+
+                float box_set(vec3 pos) {
+                    vec3 pos_origin = pos;
+                    float boxScale = 2.0 - abs(sin(gTime * 0.4)) * uSpikeLength;
+
+                    pos = pos_origin;
+                    pos.y += sin(gTime * 0.4) * 2.5;
+                    pos.xy *= rot(0.8);
+                    float box1 = box(pos, boxScale);
+
+                    pos = pos_origin;
+                    pos.y -= sin(gTime * 0.4) * 2.5;
+                    pos.xy *= rot(0.8);
+                    float box2 = box(pos, boxScale);
+
+                    pos = pos_origin;
+                    pos.x += sin(gTime * 0.4) * 2.5;
+                    pos.xy *= rot(0.8);
+                    float box3 = box(pos, boxScale);
+
+                    pos = pos_origin;
+                    pos.x -= sin(gTime * 0.4) * 2.5;
+                    pos.xy *= rot(0.8);
+                    float box4 = box(pos, boxScale);
+
+                    pos = pos_origin;
+                    pos.xy *= rot(0.8);
+                    float box5 = box(pos, 0.5) * 6.0;
+
+                    pos = pos_origin;
+                    float box6 = box(pos, 0.5) * 6.0;
+
+                    return max(max(max(max(max(box1, box2), box3), box4), box5), box6);
+                }
+
+                float map(vec3 pos) {
+                    return box_set(pos);
+                }
+
+                void main() {
+                    float t = iTime * uSpeed + uTimeOffset;
+                    vec2 p = (gl_FragCoord.xy * 2.0 - iResolution.xy) / min(iResolution.x, iResolution.y);
+                    vec3 ro = vec3(0.0, -0.2 + uCamHeight, t * uZoom);
+                    vec3 ray = normalize(vec3(p, uFov));
+                    ray.xy = ray.xy * rot(sin(t * 0.03) * 5.0);
+                    ray.yz = ray.yz * rot(sin(t * 0.05) * 0.2);
+
+                    float d = 0.1;
+                    vec3 col = vec3(0.0);
+                    float ac = 0.0;
+
+                    for (int i = 0; i < 99; i++) {
+                        vec3 pos = ro + ray * d;
+                        pos = mod(pos - 2.0, 4.0) - 2.0;
+                        gTime = t - float(i) * 0.01;
+
+                        float dist = map(pos);
+                        dist = max(abs(dist), 0.01);
+                        ac += exp(-dist * uShadowSoft);
+                        d += dist * 0.55;
+                    }
+
+                    col = vec3(ac * 0.02 * uDiffuse);
+                    col += uObjectColor * 0.5 + uLightColor * 0.2 * abs(sin(t));
+                    col = mix(uBgColor, col, 1.0 - d * (0.02 + 0.02 * sin(t)));
+                    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 14: Warp Tunnel - Simple tunnel flythrough
+            warpTunnel: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                void main() {
+                    float t = iTime * uSpeed + uTimeOffset;
+                    vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+
+                    // Polar coordinates for tunnel
+                    float angle = atan(uv.y, uv.x);
+                    float radius = length(uv);
+
+                    // Prevent division by zero at center
+                    radius = max(radius, 0.01);
+
+                    // Tunnel depth effect
+                    float depth = uZoom / radius;
+
+                    // Scrolling texture coordinates
+                    float tx = angle / 3.14159;
+                    float ty = depth - t * 2.0;
+
+                    // Create tunnel pattern
+                    float pattern = 0.0;
+
+                    // Ring pattern
+                    float rings = sin(ty * uSpikeLength * 5.0) * 0.5 + 0.5;
+
+                    // Spiral pattern
+                    float spiral = sin(angle * uShellThickness * 10.0 + ty * 3.0) * 0.5 + 0.5;
+
+                    // Grid pattern
+                    float gridX = abs(sin(tx * 10.0 * uSphereRadius));
+                    float gridY = abs(sin(ty * 2.0));
+                    float grid = max(gridX, gridY);
+
+                    pattern = mix(rings, spiral, 0.5) * grid;
+
+                    // Depth fog
+                    float fog = 1.0 - smoothstep(0.0, uZoom * 2.0, depth);
+
+                    // Color based on depth and pattern
+                    vec3 col = uObjectColor * pattern;
+                    col += uLightColor * rings * 0.3;
+
+                    // Add glow at edges
+                    float edgeGlow = smoothstep(0.5, 0.0, radius) * uAmbient;
+                    col += uLightColor * edgeGlow * 0.5;
+
+                    // Apply fog
+                    col = mix(col * uDiffuse, uBgColor, fog);
+
+                    // Vignette
+                    col *= 1.0 - radius * 0.5;
+
+                    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 15: Hyperdrive - Original hyperspace warp effect
+            hyperdrive: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                float hash(vec2 p) {
+                    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+                }
+
+                void main() {
+                    float t = iTime * uSpeed + uTimeOffset;
+                    vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+
+                    vec3 col = uBgColor;
+                    float stars = 0.0;
+                    float trails = 0.0;
+
+                    for (float layer = 0.0; layer < 4.0; layer++) {
+                        float depth = 1.0 + layer * 0.5;
+                        float speed = uZoom * depth;
+
+                        for (float i = 0.0; i < 100.0; i++) {
+                            vec2 starPos = vec2(
+                                hash(vec2(i, layer)) - 0.5,
+                                hash(vec2(i + 100.0, layer)) - 0.5
+                            ) * 2.0;
+
+                            float z = mod(hash(vec2(i + 200.0, layer)) * 10.0 - t * speed, 10.0);
+                            float size = uSpikeWidth * 0.1 / (z + 0.1);
+
+                            vec2 projected = starPos / (z * 0.1 + 0.01);
+                            float dist = length(uv - projected);
+
+                            // Star point
+                            stars += smoothstep(size, 0.0, dist) * (1.0 - z / 10.0);
+
+                            // Motion trail
+                            vec2 trailDir = normalize(projected);
+                            float trailLen = uSpikeLength * size * 20.0 * (1.0 - z / 10.0);
+                            float trailDist = length(uv - projected + trailDir * trailLen * 0.5);
+                            float trail = smoothstep(size * 3.0, 0.0, abs(dot(uv - projected, vec2(-trailDir.y, trailDir.x))));
+                            trail *= smoothstep(trailLen, 0.0, length(uv - projected));
+                            trails += trail * (1.0 - z / 10.0) * 0.3;
+                        }
+                    }
+
+                    // Central vortex glow
+                    float vortex = 1.0 / (length(uv) * uShadowSoft + 0.5);
+                    vortex *= 0.5 + 0.5 * sin(t * 3.0 + length(uv) * 20.0);
+
+                    col += uLightColor * stars * uDiffuse;
+                    col += uObjectColor * trails;
+                    col += uAmbientColor * vortex * uAmbient * 0.3;
+
+                    // Color shift based on position
+                    col += vec3(0.1, 0.0, 0.2) * (1.0 - length(uv)) * uSmoothing;
+
+                    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 16: Neural Storm - Electric energy field
+            neuralStorm: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                void main() {
+                    float t = iTime * uSpeed + uTimeOffset;
+                    vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+                    uv *= uZoom;
+
+                    vec3 col = uBgColor;
+
+                    // Multiple energy layers
+                    float energy = 0.0;
+
+                    for (float i = 0.0; i < 8.0; i++) {
+                        float phase = i * 0.785; // PI/4
+                        float speed = 1.0 + i * 0.2;
+
+                        // Rotating wave pattern
+                        vec2 ruv = uv;
+                        float ca = cos(t * 0.2 + phase);
+                        float sa = sin(t * 0.2 + phase);
+                        ruv = vec2(ruv.x * ca - ruv.y * sa, ruv.x * sa + ruv.y * ca);
+
+                        // Wave function
+                        float wave = sin(ruv.x * uSpikeLength * 10.0 + t * speed);
+                        wave *= sin(ruv.y * uSpikeLength * 10.0 - t * speed * 0.7);
+
+                        // Distance from center affects intensity
+                        float dist = length(uv);
+                        float intensity = exp(-dist * uShellThickness * 3.0);
+
+                        energy += wave * intensity / (i + 1.0);
+                    }
+
+                    // Pulsing center glow
+                    float centerDist = length(uv);
+                    float centerGlow = uSphereRadius * 0.1 / (centerDist + 0.1);
+                    centerGlow *= 0.5 + 0.5 * sin(t * 3.0);
+
+                    // Radial beams
+                    float angle = atan(uv.y, uv.x);
+                    float beams = abs(sin(angle * uSpikeWidth * 10.0 + t));
+                    beams *= exp(-centerDist * 2.0);
+
+                    // Color composition
+                    energy = energy * 0.5 + 0.5;
+
+                    col += uObjectColor * energy * uDiffuse;
+                    col += uLightColor * centerGlow * uAmbient;
+                    col += uAmbientColor * beams * 0.5;
+
+                    // Electric crackle effect
+                    float crackle = sin(uv.x * 50.0 + t * 10.0) * sin(uv.y * 50.0 - t * 8.0);
+                    crackle = smoothstep(0.9, 1.0, abs(crackle));
+                    col += uLightColor * crackle * 0.3 * exp(-centerDist * 3.0);
+
+                    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 17: Cosmic Singularity - Black hole with accretion disk
+            cosmicSingularity: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                #define PI 3.14159265359
+
+                float hash(float n) { return fract(sin(n) * 43758.5453); }
+
+                float noise(vec2 p) {
+                    vec2 i = floor(p);
+                    vec2 f = fract(p);
+                    f = f * f * (3.0 - 2.0 * f);
+                    float n = i.x + i.y * 57.0;
+                    return mix(mix(hash(n), hash(n + 1.0), f.x),
+                               mix(hash(n + 57.0), hash(n + 58.0), f.x), f.y);
+                }
+
+                float fbm(vec2 p) {
+                    float f = 0.0;
+                    f += 0.5000 * noise(p); p *= 2.02;
+                    f += 0.2500 * noise(p); p *= 2.03;
+                    f += 0.1250 * noise(p); p *= 2.01;
+                    f += 0.0625 * noise(p);
+                    return f / 0.9375;
+                }
+
+                void main() {
+                    float t = iTime * uSpeed + uTimeOffset;
+                    vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+
+                    vec3 col = uBgColor;
+
+                    float dist = length(uv);
+                    float angle = atan(uv.y, uv.x);
+
+                    // Gravitational lensing distortion
+                    float lensStrength = uSphereRadius * 0.15 / (dist + 0.1);
+                    vec2 lensedUV = uv + normalize(uv) * lensStrength * uSpikeLength;
+
+                    // Event horizon (black hole center)
+                    float eventHorizon = uShellThickness * 0.08;
+                    float holeEdge = smoothstep(eventHorizon, eventHorizon + 0.02, dist);
+
+                    // Accretion disk
+                    float diskAngle = angle + t * 0.5;
+                    float diskDist = length(lensedUV);
+
+                    // Disk shape - tilted ellipse
+                    vec2 diskUV = lensedUV;
+                    diskUV.y *= 2.5 + sin(t * 0.3) * uCamHeight;
+                    float diskR = length(diskUV);
+
+                    // Disk bands
+                    float diskInner = uShellThickness * 0.12;
+                    float diskOuter = uShellThickness * 0.5 + uSpikeWidth * 0.3;
+                    float diskMask = smoothstep(diskInner, diskInner + 0.05, diskR) *
+                                    smoothstep(diskOuter + 0.05, diskOuter, diskR);
+
+                    // Swirling matter in disk
+                    float swirl = fbm(vec2(diskAngle * 3.0 + t, diskR * 10.0 - t * 2.0));
+                    float hotSpots = pow(swirl, 2.0) * 2.0;
+
+                    // Disk color - hot plasma gradient
+                    vec3 diskColor = mix(uObjectColor, uLightColor, hotSpots);
+                    diskColor += vec3(1.0, 0.5, 0.1) * pow(swirl, 3.0) * uDiffuse;
+
+                    // Relativistic jets
+                    float jetAngle = abs(uv.y) / (abs(uv.x) + 0.01);
+                    float jet = smoothstep(5.0, 15.0, jetAngle) * smoothstep(0.5, 0.1, dist);
+                    jet *= (0.5 + 0.5 * sin(dist * 30.0 - t * 5.0)) * uSpikeLength;
+
+                    // Photon sphere glow
+                    float photonSphere = exp(-abs(dist - eventHorizon * 1.5) * uShadowSoft * 2.0);
+
+                    // Star field background with lensing
+                    vec2 starUV = lensedUV * uZoom * 3.0;
+                    float stars = 0.0;
+                    for (float i = 0.0; i < 3.0; i++) {
+                        vec2 starPos = floor(starUV * (10.0 + i * 5.0));
+                        float starRand = hash(starPos.x + starPos.y * 100.0 + i);
+                        if (starRand > 0.97) {
+                            vec2 starCenter = (starPos + 0.5) / (10.0 + i * 5.0);
+                            float starDist = length(starUV / (10.0 + i * 5.0) - starCenter);
+                            stars += 0.01 / (starDist + 0.005) * starRand;
+                        }
+                    }
+
+                    // Compose final image
+                    col += uAmbientColor * stars * holeEdge;
+                    col += diskColor * diskMask * holeEdge * uDiffuse;
+                    col += uLightColor * photonSphere * uAmbient * 0.5;
+                    col += vec3(0.5, 0.7, 1.0) * jet * holeEdge;
+
+                    // Darken center for black hole
+                    col *= holeEdge;
+
+                    // Add edge glow
+                    float edgeGlow = exp(-abs(dist - eventHorizon) * 50.0) * (1.0 - holeEdge + 0.1);
+                    col += uLightColor * edgeGlow * 2.0;
+
+                    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 18: Dimensional Rift - Reality-tearing portal effect
+            dimensionalRift: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec4 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                #define PI 3.14159265359
+
+                float hash(vec2 p) {
+                    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+                }
+
+                float voronoi(vec2 p) {
+                    vec2 i = floor(p);
+                    vec2 f = fract(p);
+                    float minDist = 1.0;
+                    for (int y = -1; y <= 1; y++) {
+                        for (int x = -1; x <= 1; x++) {
+                            vec2 neighbor = vec2(float(x), float(y));
+                            vec2 point = hash(i + neighbor) * vec2(0.5) + 0.25;
+                            float d = length(neighbor + point - f);
+                            minDist = min(minDist, d);
+                        }
+                    }
+                    return minDist;
+                }
+
+                mat2 rot(float a) {
+                    float c = cos(a), s = sin(a);
+                    return mat2(c, -s, s, c);
+                }
+
+                void main() {
+                    float t = iTime * uSpeed + uTimeOffset;
+                    vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+
+                    vec3 col = uBgColor;
+
+                    float dist = length(uv);
+                    float angle = atan(uv.y, uv.x);
+
+                    // Rift opening - pulsating tear in reality
+                    float riftPulse = 0.5 + 0.3 * sin(t * 2.0) + 0.2 * sin(t * 3.7);
+                    float riftWidth = uShellThickness * 0.3 * riftPulse;
+
+                    // Jagged rift edges using layered sine waves
+                    float riftShape = 0.0;
+                    for (float i = 1.0; i < 6.0; i++) {
+                        riftShape += sin(angle * i * 3.0 + t * i * 0.5) / i;
+                    }
+                    riftShape = riftShape * 0.1 * uSpikeLength;
+
+                    float riftDist = abs(dist - uSphereRadius * 0.3 + riftShape) - riftWidth;
+                    float riftMask = smoothstep(0.02, 0.0, riftDist);
+
+                    // Reality fractures spreading from rift
+                    float fractures = 0.0;
+                    for (float i = 0.0; i < 5.0; i++) {
+                        float fAngle = angle + i * PI * 0.4 + t * 0.2;
+                        float fDist = dist - uSphereRadius * 0.3;
+                        if (fDist > 0.0 && fDist < uSpikeWidth * 0.5) {
+                            float crack = abs(sin(fAngle * (8.0 + i * 3.0)));
+                            crack = pow(crack, 20.0);
+                            fractures += crack * (1.0 - fDist / (uSpikeWidth * 0.5));
+                        }
+                    }
+
+                    // Dimensional layers visible through rift
+                    vec3 dimension1 = vec3(0.0);
+                    vec3 dimension2 = vec3(0.0);
+
+                    // Dimension 1: Geometric void
+                    vec2 d1uv = uv * rot(t * 0.3) * uZoom * 2.0;
+                    float geo = voronoi(d1uv * 5.0 + t);
+                    geo = pow(geo, 0.5);
+                    dimension1 = mix(uObjectColor, uLightColor, geo) * uDiffuse;
+
+                    // Dimension 2: Energy streams
+                    vec2 d2uv = uv * rot(-t * 0.2) * uZoom * 3.0;
+                    float streams = 0.0;
+                    for (float i = 0.0; i < 4.0; i++) {
+                        float streamAngle = atan(d2uv.y, d2uv.x) + i * PI * 0.5;
+                        float streamWave = sin(streamAngle * 5.0 + length(d2uv) * 10.0 - t * 3.0);
+                        streams += pow(abs(streamWave), 8.0) / (length(d2uv) + 0.5);
+                    }
+                    dimension2 = uAmbientColor * streams * 2.0;
+
+                    // Blend dimensions based on time
+                    float dimBlend = sin(t * 0.5) * 0.5 + 0.5;
+                    vec3 portalInterior = mix(dimension1, dimension2, dimBlend);
+
+                    // Energy discharge at rift edges
+                    float discharge = 0.0;
+                    for (float i = 0.0; i < 8.0; i++) {
+                        float boltAngle = angle + hash(vec2(i, floor(t * 2.0))) * PI * 2.0;
+                        float boltDist = dist - uSphereRadius * 0.3;
+                        vec2 boltDir = vec2(cos(boltAngle), sin(boltAngle));
+                        float bolt = abs(dot(normalize(uv), boltDir));
+                        bolt = pow(bolt, 50.0) * step(0.0, boltDist) * step(boltDist, 0.2);
+                        bolt *= (0.5 + 0.5 * sin(t * 20.0 + i * 5.0));
+                        discharge += bolt;
+                    }
+
+                    // Outer reality distortion
+                    float distortion = sin(dist * 20.0 - t * 2.0) * sin(angle * 8.0 + t);
+                    distortion *= exp(-dist * 3.0) * uSmoothing;
+
+                    // Edge glow
+                    float edgeGlow = exp(-abs(riftDist) * uShadowSoft * 3.0);
+
+                    // Compose
+                    col = uBgColor * (1.0 + distortion * 0.3);
+                    col = mix(col, portalInterior, riftMask);
+                    col += uLightColor * edgeGlow * uAmbient;
+                    col += uLightColor * fractures * 0.5;
+                    col += vec3(1.0, 0.8, 0.5) * discharge;
+
+                    // Pulsing outer ring
+                    float ring = exp(-abs(dist - uSphereRadius * 0.5 - sin(t) * 0.1) * 20.0);
+                    col += uObjectColor * ring * 0.3 * (0.5 + 0.5 * sin(t * 4.0));
+
+                    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 19: Stellar Nursery - Star-forming nebula
+            stellarNursery: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec2 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                float hash(vec2 p) {
+                    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+                }
+
+                float noise(vec2 p) {
+                    vec2 i = floor(p);
+                    vec2 f = fract(p);
+                    f = f * f * (3.0 - 2.0 * f);
+                    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+                }
+
+                float fbm(vec2 p) {
+                    float f = 0.0;
+                    float w = 0.5;
+                    for (int i = 0; i < 5; i++) {
+                        f += w * noise(p);
+                        p *= 2.0;
+                        w *= 0.5;
+                    }
+                    return f;
+                }
+
+                void main() {
+                    vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+                    float t = iTime * uSpeed + uTimeOffset;
+
+                    // Scale by zoom
+                    uv *= uZoom;
+
+                    // Swirling nebula base
+                    float angle = atan(uv.y, uv.x);
+                    float radius = length(uv);
+
+                    // Spiral arm distortion
+                    float spiral = sin(angle * uSpikeLength * 3.0 + radius * uShellThickness * 10.0 - t * 0.5);
+
+                    // Layered nebula clouds
+                    vec2 np = uv + vec2(cos(t * 0.2), sin(t * 0.3)) * 0.5;
+                    float nebula1 = fbm(np * 3.0 + t * 0.1);
+                    float nebula2 = fbm(np * 5.0 - t * 0.15 + 10.0);
+                    float nebula3 = fbm(np * 2.0 + t * 0.05 + 20.0);
+
+                    // Combine nebula layers
+                    float nebula = nebula1 * 0.5 + nebula2 * 0.3 + nebula3 * 0.2;
+                    nebula *= (1.0 + spiral * 0.3);
+
+                    // Star formation regions (bright spots)
+                    float stars = 0.0;
+                    for (int i = 0; i < 8; i++) {
+                        vec2 starPos = vec2(hash(vec2(float(i), 0.0)) - 0.5, hash(vec2(0.0, float(i))) - 0.5) * 2.0;
+                        starPos *= uSphereRadius;
+                        float d = length(uv - starPos);
+                        float pulse = 0.5 + 0.5 * sin(t * (1.0 + hash(vec2(float(i), float(i)))) + float(i));
+                        stars += exp(-d * uShadowSoft * 3.0) * pulse * uDiffuse * 0.3;
+                    }
+
+                    // Dust lanes
+                    float dust = fbm(uv * 8.0 + t * 0.05);
+                    dust = smoothstep(0.4, 0.6, dust);
+
+                    // Color gradients
+                    vec3 col1 = uObjectColor;
+                    vec3 col2 = uLightColor;
+                    vec3 col3 = uAmbientColor;
+
+                    vec3 col = uBgColor;
+                    col = mix(col, col3, nebula3 * uAmbient);
+                    col = mix(col, col1, nebula1 * 0.8);
+                    col = mix(col, col2, nebula2 * 0.6);
+                    col *= (1.0 - dust * 0.5 * uSmoothing);
+                    col += vec3(1.0, 0.9, 0.7) * stars;
+
+                    // Vignette
+                    col *= 1.0 - radius * 0.3;
+
+                    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 20: Cyber Grid - Infinite neon grid
+            cyberGrid: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec2 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                float hash(float n) { return fract(sin(n) * 43758.5453); }
+
+                void main() {
+                    vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+                    float t = iTime * uSpeed + uTimeOffset;
+
+                    // Perspective grid
+                    float horizon = uCamHeight * 0.1;
+                    float z = uZoom / (uv.y - horizon + 0.001);
+                    float x = uv.x * z;
+
+                    vec3 col = uBgColor;
+
+                    if (uv.y < horizon + 0.5) {
+                        // Moving grid
+                        float gridX = abs(fract(x * uSpikeLength) - 0.5);
+                        float gridZ = abs(fract(z * uShellThickness * 0.1 - t) - 0.5);
+
+                        float lineX = smoothstep(uSpikeWidth, 0.0, gridX);
+                        float lineZ = smoothstep(uSpikeWidth, 0.0, gridZ);
+
+                        float grid = max(lineX, lineZ);
+
+                        // Distance fade
+                        float fade = exp(-z * 0.02 * uSmoothing);
+                        grid *= fade;
+
+                        // Pulse waves traveling along grid
+                        float pulse1 = sin(z * 0.5 - t * 3.0) * 0.5 + 0.5;
+                        float pulse2 = sin(x * 0.3 - t * 2.0) * 0.5 + 0.5;
+
+                        // Data streams
+                        float stream = 0.0;
+                        for (int i = 0; i < 5; i++) {
+                            float sx = floor(x * uSpikeLength + float(i) * 0.3);
+                            float streamPos = fract(hash(sx) + t * (0.5 + hash(sx + 10.0)));
+                            float streamZ = streamPos * 50.0;
+                            float d = abs(z - streamZ);
+                            stream += exp(-d * 0.5) * step(0.48, fract(x * uSpikeLength + float(i) * 0.3 + 0.25))
+                                   * step(fract(x * uSpikeLength + float(i) * 0.3 + 0.25), 0.52);
+                        }
+                        stream *= fade;
+
+                        col = uBgColor;
+                        col += uObjectColor * grid * uAmbient;
+                        col += uLightColor * grid * pulse1 * uDiffuse * 0.5;
+                        col += uAmbientColor * grid * pulse2 * 0.3;
+                        col += uLightColor * stream * 2.0;
+
+                        // Horizon glow
+                        float horizonGlow = exp(-abs(uv.y - horizon) * uShadowSoft * 5.0);
+                        col += uLightColor * horizonGlow * 0.5;
+                    }
+
+                    // Sun/moon
+                    float sunDist = length(uv - vec2(0.0, horizon + 0.3));
+                    col += uLightColor * exp(-sunDist * uShadowSoft * 2.0) * uDiffuse;
+
+                    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 21: Liquid Aurora - Flowing northern lights
+            liquidAurora: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec2 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                float hash(vec2 p) {
+                    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+                }
+
+                float noise(vec2 p) {
+                    vec2 i = floor(p);
+                    vec2 f = fract(p);
+                    f = f * f * (3.0 - 2.0 * f);
+                    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+                }
+
+                void main() {
+                    vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+                    float t = iTime * uSpeed + uTimeOffset;
+
+                    vec3 col = uBgColor;
+
+                    // Multiple aurora curtains
+                    for (int i = 0; i < 5; i++) {
+                        float fi = float(i);
+                        float offset = fi * 0.3;
+
+                        // Wavy curtain shape
+                        float wave1 = sin(uv.x * uSpikeLength * 3.0 + t * (0.5 + fi * 0.1) + offset) * 0.2;
+                        float wave2 = sin(uv.x * uSpikeLength * 7.0 - t * 0.3 + fi) * 0.1;
+                        float wave3 = noise(vec2(uv.x * 2.0 + t * 0.2, fi)) * 0.15;
+
+                        float curtainY = uCamHeight * 0.2 + wave1 + wave2 + wave3 + fi * 0.15;
+
+                        // Curtain intensity
+                        float curtain = exp(-abs(uv.y - curtainY) * uShadowSoft * 5.0);
+
+                        // Vertical rays within curtain
+                        float rays = noise(vec2(uv.x * uShellThickness * 20.0, t + fi * 10.0));
+                        rays = pow(rays, 2.0);
+
+                        // Shimmer
+                        float shimmer = 0.7 + 0.3 * sin(uv.x * 50.0 + t * 5.0 + fi * 3.0);
+
+                        // Color based on layer
+                        vec3 auroraColor;
+                        float colorMix = fract(fi * 0.3 + t * 0.1);
+                        auroraColor = mix(uObjectColor, uLightColor, colorMix);
+                        auroraColor = mix(auroraColor, uAmbientColor, sin(fi + t) * 0.5 + 0.5);
+
+                        float intensity = curtain * (0.5 + rays * 0.5) * shimmer * uDiffuse;
+                        intensity *= (1.0 - fi * 0.15); // Fade back layers
+
+                        col += auroraColor * intensity * uAmbient;
+                    }
+
+                    // Stars
+                    for (int i = 0; i < 50; i++) {
+                        vec2 starPos = vec2(hash(vec2(float(i), 0.0)), hash(vec2(0.0, float(i)))) * 2.0 - 1.0;
+                        starPos.x *= iResolution.x / iResolution.y;
+                        float d = length(uv - starPos);
+                        float twinkle = 0.5 + 0.5 * sin(t * (2.0 + hash(vec2(float(i), float(i)))) + float(i));
+                        col += vec3(1.0) * exp(-d * 500.0) * twinkle * uSmoothing;
+                    }
+
+                    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 22: Fractal Flame - Procedural fire fractals
+            fractalFlame: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec2 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                float hash(vec2 p) {
+                    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+                }
+
+                float noise(vec2 p) {
+                    vec2 i = floor(p);
+                    vec2 f = fract(p);
+                    f = f * f * (3.0 - 2.0 * f);
+                    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+                }
+
+                float fbm(vec2 p) {
+                    float f = 0.0;
+                    float w = 0.5;
+                    for (int i = 0; i < 6; i++) {
+                        f += w * noise(p);
+                        p *= 2.0;
+                        w *= 0.5;
+                    }
+                    return f;
+                }
+
+                void main() {
+                    vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+                    float t = iTime * uSpeed + uTimeOffset;
+
+                    // Scale
+                    uv *= uZoom;
+
+                    // Rising motion
+                    uv.y += t * 0.5;
+
+                    // Turbulent distortion
+                    vec2 distort;
+                    distort.x = fbm(uv * uSpikeLength + t * 0.3);
+                    distort.y = fbm(uv * uSpikeLength + 10.0 + t * 0.4);
+                    uv += (distort - 0.5) * uShellThickness;
+
+                    // Flame shape
+                    float flame = 0.0;
+
+                    // Multiple flame layers
+                    for (int i = 0; i < 4; i++) {
+                        float fi = float(i);
+                        vec2 flameUV = uv * (1.0 + fi * 0.5);
+                        flameUV.x += sin(flameUV.y * 3.0 + t + fi) * 0.2 * uSpikeWidth;
+
+                        float f = fbm(flameUV * 3.0 + t * (0.5 + fi * 0.2));
+                        f = pow(f, 1.5 - fi * 0.2);
+
+                        // Vertical gradient
+                        float gradient = 1.0 - (gl_FragCoord.y / iResolution.y);
+                        gradient = pow(gradient, 0.5 + fi * 0.3);
+
+                        flame += f * gradient * (1.0 - fi * 0.2);
+                    }
+
+                    flame *= uDiffuse;
+
+                    // Color gradient based on intensity
+                    vec3 col = uBgColor;
+
+                    // Core (white/yellow)
+                    col = mix(col, uLightColor, smoothstep(0.0, 0.3, flame) * uAmbient);
+                    // Mid (orange)
+                    col = mix(col, uObjectColor, smoothstep(0.2, 0.6, flame));
+                    // Outer (red/dark)
+                    col = mix(col, uAmbientColor, smoothstep(0.5, 1.0, flame) * 0.5);
+
+                    // Bright core
+                    float core = exp(-length(uv) * uShadowSoft);
+                    col += uLightColor * core * uSmoothing;
+
+                    // Sparks
+                    for (int i = 0; i < 10; i++) {
+                        float fi = float(i);
+                        vec2 sparkPos = vec2(hash(vec2(fi, t * 0.01)) - 0.5, fract(t * 0.5 + hash(vec2(fi, 0.0))));
+                        sparkPos.x *= uSphereRadius;
+                        sparkPos.y = sparkPos.y * 2.0 - 1.0;
+                        float d = length(uv - sparkPos);
+                        col += uLightColor * exp(-d * 50.0) * 0.5;
+                    }
+
+                    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 23: Quantum Foam - Spacetime bubbles
+            quantumFoam: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec2 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                vec2 hash2(vec2 p) {
+                    return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
+                }
+
+                float voronoi(vec2 p) {
+                    vec2 n = floor(p);
+                    vec2 f = fract(p);
+                    float md = 8.0;
+                    for (int i = -1; i <= 1; i++) {
+                        for (int j = -1; j <= 1; j++) {
+                            vec2 g = vec2(float(i), float(j));
+                            vec2 o = hash2(n + g);
+                            vec2 r = g + o - f;
+                            float d = dot(r, r);
+                            md = min(md, d);
+                        }
+                    }
+                    return sqrt(md);
+                }
+
+                void main() {
+                    vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+                    float t = iTime * uSpeed + uTimeOffset;
+
+                    uv *= uZoom;
+
+                    vec3 col = uBgColor;
+
+                    // Multiple scales of foam
+                    float foam = 0.0;
+                    float edge = 0.0;
+
+                    for (int i = 0; i < 4; i++) {
+                        float fi = float(i);
+                        float scale = uSpikeLength * (2.0 + fi * 2.0);
+                        vec2 animUV = uv * scale + t * (0.1 + fi * 0.05) * vec2(1.0, 0.5);
+
+                        float v = voronoi(animUV);
+
+                        // Bubble interior
+                        foam += (1.0 - v) * (1.0 / (1.0 + fi));
+
+                        // Cell edges
+                        edge += exp(-v * uShadowSoft * (5.0 + fi * 2.0)) * (1.0 / (1.0 + fi * 0.5));
+                    }
+
+                    // Pulsing effect
+                    float pulse = 0.8 + 0.2 * sin(t * 2.0);
+
+                    // Color composition
+                    col += uAmbientColor * foam * uAmbient * 0.5;
+                    col += uObjectColor * edge * uDiffuse * pulse;
+
+                    // Bright spots (virtual particles)
+                    for (int i = 0; i < 15; i++) {
+                        float fi = float(i);
+                        vec2 particlePos = hash2(vec2(fi, floor(t * 2.0 + fi * 0.1))) * 2.0 - 1.0;
+                        particlePos *= uSphereRadius;
+                        float lifetime = fract(t * 0.5 + fi * 0.1);
+                        float brightness = sin(lifetime * 3.14159) * (1.0 - lifetime);
+                        float d = length(uv - particlePos);
+                        col += uLightColor * exp(-d * 30.0) * brightness * uSmoothing;
+                    }
+
+                    // Energy fluctuation overlay
+                    float energy = sin(uv.x * uShellThickness * 20.0 + t) * sin(uv.y * uShellThickness * 20.0 - t * 1.3);
+                    col += uLightColor * energy * 0.1 * uSmoothing;
+
+                    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 24: Tesseract - 4D hypercube projection
+            tesseract: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec2 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                mat2 rot(float a) {
+                    float c = cos(a), s = sin(a);
+                    return mat2(c, -s, s, c);
+                }
+
+                float line(vec2 p, vec2 a, vec2 b) {
+                    vec2 pa = p - a, ba = b - a;
+                    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+                    return length(pa - ba * h);
+                }
+
+                void main() {
+                    vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+                    float t = iTime * uSpeed + uTimeOffset;
+
+                    uv *= uZoom;
+
+                    vec3 col = uBgColor;
+
+                    // 4D rotation angles
+                    float a1 = t * 0.5;
+                    float a2 = t * 0.3;
+                    float a3 = t * 0.4;
+
+                    // 16 vertices of tesseract in 4D, projected to 2D
+                    float edgeGlow = 0.0;
+                    float vertexGlow = 0.0;
+
+                    // Generate cube vertices
+                    for (int i = 0; i < 16; i++) {
+                        // 4D coordinates from binary representation
+                        float x = float((i & 1) * 2 - 1) * uSphereRadius * 0.5;
+                        float y = float(((i >> 1) & 1) * 2 - 1) * uSphereRadius * 0.5;
+                        float z = float(((i >> 2) & 1) * 2 - 1) * uSphereRadius * 0.5;
+                        float w = float(((i >> 3) & 1) * 2 - 1) * uSphereRadius * 0.5;
+
+                        // 4D rotations (XW and YZ planes)
+                        float nx = x * cos(a1) - w * sin(a1);
+                        float nw = x * sin(a1) + w * cos(a1);
+                        x = nx; w = nw;
+
+                        float ny = y * cos(a2) - z * sin(a2);
+                        float nz = y * sin(a2) + z * cos(a2);
+                        y = ny; z = nz;
+
+                        // XY rotation
+                        nx = x * cos(a3) - y * sin(a3);
+                        ny = x * sin(a3) + y * cos(a3);
+                        x = nx; y = ny;
+
+                        // Perspective projection from 4D to 2D
+                        float scale = uFov / (uFov + w + z * 0.5);
+                        vec2 p = vec2(x, y) * scale;
+
+                        // Vertex glow
+                        float d = length(uv - p);
+                        float depth = 0.5 + 0.5 * (w + z) / (uSphereRadius * 2.0);
+                        vertexGlow += exp(-d * uShadowSoft * 10.0) * (0.5 + depth * 0.5);
+
+                        // Draw edges to connected vertices
+                        for (int j = 0; j < 16; j++) {
+                            // Check if vertices differ by exactly one bit (connected in hypercube)
+                            int diff = i ^ j;
+                            if (diff == 1 || diff == 2 || diff == 4 || diff == 8) {
+                                float x2 = float((j & 1) * 2 - 1) * uSphereRadius * 0.5;
+                                float y2 = float(((j >> 1) & 1) * 2 - 1) * uSphereRadius * 0.5;
+                                float z2 = float(((j >> 2) & 1) * 2 - 1) * uSphereRadius * 0.5;
+                                float w2 = float(((j >> 3) & 1) * 2 - 1) * uSphereRadius * 0.5;
+
+                                // Apply same rotations
+                                float nx2 = x2 * cos(a1) - w2 * sin(a1);
+                                float nw2 = x2 * sin(a1) + w2 * cos(a1);
+                                x2 = nx2; w2 = nw2;
+
+                                float ny2 = y2 * cos(a2) - z2 * sin(a2);
+                                float nz2 = y2 * sin(a2) + z2 * cos(a2);
+                                y2 = ny2; z2 = nz2;
+
+                                nx2 = x2 * cos(a3) - y2 * sin(a3);
+                                ny2 = x2 * sin(a3) + y2 * cos(a3);
+                                x2 = nx2; y2 = ny2;
+
+                                float scale2 = uFov / (uFov + w2 + z2 * 0.5);
+                                vec2 p2 = vec2(x2, y2) * scale2;
+
+                                float lineDist = line(uv, p, p2);
+                                float depth2 = 0.5 + 0.5 * (w2 + z2) / (uSphereRadius * 2.0);
+                                edgeGlow += exp(-lineDist * uShadowSoft * 30.0) * (depth + depth2) * 0.25 * uSpikeWidth;
+                            }
+                        }
+                    }
+
+                    // Compose
+                    col += uObjectColor * edgeGlow * uAmbient;
+                    col += uLightColor * vertexGlow * uDiffuse * 0.5;
+
+                    // Inner glow
+                    float innerGlow = exp(-length(uv) * uShellThickness * 3.0);
+                    col += uAmbientColor * innerGlow * uSmoothing * 0.5;
+
+                    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 25: Digital Rain - Matrix-style falling code
+            digitalRain: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec2 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                float hash(float n) { return fract(sin(n) * 43758.5453); }
+                float hash2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+
+                float char(vec2 p, float n) {
+                    // Simple pseudo-character pattern
+                    p = fract(p);
+                    float h = hash(n + floor(p.x * 3.0) + floor(p.y * 5.0) * 3.0);
+                    return step(0.5, h) * step(0.1, p.x) * step(p.x, 0.9) * step(0.1, p.y) * step(p.y, 0.9);
+                }
+
+                void main() {
+                    vec2 uv = gl_FragCoord.xy / iResolution.xy;
+                    float t = iTime * uSpeed + uTimeOffset;
+
+                    vec3 col = uBgColor;
+
+                    // Column settings
+                    float columns = uSpikeLength * 30.0;
+                    float colWidth = 1.0 / columns;
+
+                    // Current column
+                    float colIndex = floor(uv.x * columns);
+                    float colX = fract(uv.x * columns);
+
+                    // Multiple rain layers for depth
+                    for (int layer = 0; layer < 3; layer++) {
+                        float fl = float(layer);
+                        float layerOffset = fl * 13.7;
+
+                        // Rain drop for this column
+                        float dropSpeed = (0.5 + hash(colIndex + layerOffset) * 0.5) * uShellThickness;
+                        float dropStart = hash(colIndex + 100.0 + layerOffset);
+                        float dropPos = fract(dropStart + t * dropSpeed);
+
+                        // Trail length
+                        float trailLen = uSphereRadius * 0.3 * (0.5 + hash(colIndex + 200.0 + layerOffset) * 0.5);
+
+                        // Distance from drop head
+                        float distFromHead = dropPos - uv.y;
+                        if (distFromHead < 0.0) distFromHead += 1.0;
+
+                        // Character grid
+                        float charRows = uShadowSoft * 3.0;
+                        float charY = floor(uv.y * charRows);
+                        float localY = fract(uv.y * charRows);
+
+                        // Is this cell in the trail?
+                        float inTrail = step(distFromHead, trailLen) * step(0.0, distFromHead);
+
+                        // Brightness fade along trail
+                        float brightness = (1.0 - distFromHead / trailLen) * inTrail;
+                        brightness = pow(brightness, 1.5);
+
+                        // Character flickering
+                        float charSeed = colIndex * 100.0 + charY + floor(t * (3.0 + hash(colIndex) * 5.0));
+                        float charPattern = hash2(vec2(colIndex, charY + floor(t * 2.0)));
+
+                        // Make head brightest
+                        float headDist = abs(distFromHead);
+                        float headGlow = exp(-headDist * charRows * 2.0);
+
+                        // Layer depth effect
+                        float layerBrightness = 1.0 - fl * 0.3;
+
+                        // Combine
+                        float intensity = brightness * charPattern * layerBrightness;
+                        intensity += headGlow * 2.0 * layerBrightness;
+
+                        col += uObjectColor * intensity * uAmbient * 0.5;
+                        col += uLightColor * headGlow * uDiffuse * layerBrightness;
+                    }
+
+                    // Glow effect
+                    float glow = 0.0;
+                    for (float i = -2.0; i <= 2.0; i++) {
+                        float neighborCol = floor(uv.x * columns) + i;
+                        float dropSpeed = (0.5 + hash(neighborCol) * 0.5) * uShellThickness;
+                        float dropPos = fract(hash(neighborCol + 100.0) + t * dropSpeed);
+                        float dist = abs(uv.y - dropPos);
+                        glow += exp(-dist * 10.0) * exp(-abs(i) * 2.0);
+                    }
+                    col += uLightColor * glow * uSmoothing * 0.1;
+
+                    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 26: Nebula Core - Explosive nebula center
+            nebulaCore: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec2 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+
+                float noise(vec2 p) {
+                    vec2 i = floor(p);
+                    vec2 f = fract(p);
+                    f = f * f * (3.0 - 2.0 * f);
+                    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+                }
+
+                float fbm(vec2 p) {
+                    float f = 0.0;
+                    float w = 0.5;
+                    for (int i = 0; i < 6; i++) {
+                        f += w * noise(p);
+                        p *= 2.0;
+                        w *= 0.5;
+                    }
+                    return f;
+                }
+
+                void main() {
+                    vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+                    float t = iTime * uSpeed + uTimeOffset;
+
+                    uv *= uZoom;
+
+                    float angle = atan(uv.y, uv.x);
+                    float radius = length(uv);
+
+                    // Explosion shockwaves
+                    float shockwave = 0.0;
+                    for (int i = 0; i < 3; i++) {
+                        float fi = float(i);
+                        float waveRadius = fract(t * 0.2 + fi * 0.33) * uSphereRadius * 2.0;
+                        float wave = exp(-abs(radius - waveRadius) * uShadowSoft * 5.0);
+                        wave *= (1.0 - fract(t * 0.2 + fi * 0.33)); // Fade as it expands
+                        shockwave += wave;
+                    }
+
+                    // Turbulent core
+                    vec2 turbUV = uv;
+                    turbUV += vec2(fbm(uv * 3.0 + t * 0.5), fbm(uv * 3.0 + 10.0 - t * 0.4)) * uShellThickness * 0.5;
+
+                    float core = fbm(turbUV * uSpikeLength * 2.0 + t * 0.3);
+                    core *= exp(-radius * 3.0);
+
+                    // Filaments
+                    float filaments = 0.0;
+                    for (int i = 0; i < 8; i++) {
+                        float fi = float(i);
+                        float fAngle = fi * 0.785 + t * 0.1;
+                        vec2 dir = vec2(cos(fAngle), sin(fAngle));
+                        float proj = dot(uv, dir);
+                        float perp = length(uv - dir * proj);
+
+                        float turbulence = fbm(vec2(proj * 10.0, fi) + t * 0.5) * 0.1;
+                        float filament = exp(-(perp + turbulence) * uShadowSoft * 10.0);
+                        filament *= smoothstep(0.0, 0.2, proj) * smoothstep(uSphereRadius, 0.3, proj);
+                        filaments += filament;
+                    }
+
+                    // Hot gas clouds
+                    float gas1 = fbm(uv * 4.0 + t * 0.2);
+                    float gas2 = fbm(uv * 6.0 - t * 0.15 + 20.0);
+
+                    // Color composition
+                    vec3 col = uBgColor;
+
+                    // Background nebula
+                    col += uAmbientColor * gas1 * 0.3 * uAmbient;
+                    col += uObjectColor * gas2 * 0.4;
+
+                    // Shockwaves
+                    col += uLightColor * shockwave * uDiffuse;
+
+                    // Filaments
+                    col += uObjectColor * filaments * 0.8;
+                    col += uLightColor * filaments * 0.3;
+
+                    // Hot core
+                    col += uLightColor * core * 2.0 * uDiffuse;
+
+                    // Central star
+                    float star = exp(-radius * uShadowSoft * 8.0);
+                    col += vec3(1.0, 0.95, 0.9) * star * uSmoothing * 2.0;
+
+                    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 27: Crystal Cavern - Crystalline formations
+            crystalCavern: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec2 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                vec2 hash2(vec2 p) {
+                    return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
+                }
+
+                float voronoi(vec2 p, out vec2 cellCenter) {
+                    vec2 n = floor(p);
+                    vec2 f = fract(p);
+                    float md = 8.0;
+                    vec2 mr;
+                    for (int i = -1; i <= 1; i++) {
+                        for (int j = -1; j <= 1; j++) {
+                            vec2 g = vec2(float(i), float(j));
+                            vec2 o = hash2(n + g);
+                            vec2 r = g + o - f;
+                            float d = dot(r, r);
+                            if (d < md) {
+                                md = d;
+                                mr = r;
+                                cellCenter = n + g + o;
+                            }
+                        }
+                    }
+                    return sqrt(md);
+                }
+
+                void main() {
+                    vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+                    float t = iTime * uSpeed + uTimeOffset;
+
+                    uv *= uZoom;
+
+                    vec3 col = uBgColor;
+
+                    // Multiple crystal layers
+                    for (int layer = 0; layer < 4; layer++) {
+                        float fl = float(layer);
+                        float scale = uSpikeLength * (3.0 + fl * 2.0);
+
+                        // Animate position slightly
+                        vec2 animUV = uv * scale;
+                        animUV += vec2(sin(t * 0.2 + fl), cos(t * 0.15 + fl * 2.0)) * 0.3;
+
+                        vec2 cellCenter;
+                        float v = voronoi(animUV, cellCenter);
+
+                        // Crystal facet effect
+                        float facet = dot(normalize(uv - cellCenter / scale), vec2(cos(t + fl), sin(t + fl)));
+                        facet = facet * 0.5 + 0.5;
+
+                        // Edge highlighting
+                        float edge = 1.0 - smoothstep(0.0, uSpikeWidth * 0.2, v);
+
+                        // Inner glow per crystal
+                        float inner = exp(-v * uShadowSoft * 3.0);
+
+                        // Refraction-like color shift
+                        vec3 crystalCol = uObjectColor;
+                        crystalCol = mix(crystalCol, uLightColor, facet * 0.5);
+                        crystalCol = mix(crystalCol, uAmbientColor, (1.0 - facet) * 0.3);
+
+                        // Shimmer
+                        float shimmer = sin(cellCenter.x * 10.0 + t * 3.0) * sin(cellCenter.y * 10.0 - t * 2.5);
+                        shimmer = shimmer * 0.5 + 0.5;
+
+                        float layerOpacity = 1.0 / (1.0 + fl * 0.5);
+
+                        col += crystalCol * inner * uAmbient * layerOpacity * 0.3;
+                        col += uLightColor * edge * uDiffuse * layerOpacity * 0.5;
+                        col += uLightColor * shimmer * inner * uSmoothing * layerOpacity * 0.2;
+                    }
+
+                    // Ambient light rays
+                    float rays = 0.0;
+                    for (int i = 0; i < 5; i++) {
+                        float fi = float(i);
+                        float rayAngle = fi * 0.628 + t * 0.1;
+                        vec2 rayDir = vec2(cos(rayAngle), sin(rayAngle));
+                        float rayDist = abs(dot(uv, vec2(-rayDir.y, rayDir.x)));
+                        rays += exp(-rayDist * uShellThickness * 10.0) * 0.2;
+                    }
+                    col += uLightColor * rays * uSmoothing * 0.3;
+
+                    // Dust particles
+                    for (int i = 0; i < 20; i++) {
+                        float fi = float(i);
+                        vec2 dustPos = hash2(vec2(fi, fi * 1.3)) * 2.0 - 1.0;
+                        dustPos *= uSphereRadius;
+                        dustPos += vec2(sin(t + fi), cos(t * 0.7 + fi)) * 0.2;
+                        float d = length(uv - dustPos);
+                        float twinkle = sin(t * 3.0 + fi * 5.0) * 0.5 + 0.5;
+                        col += vec3(1.0) * exp(-d * 100.0) * twinkle * 0.5;
+                    }
+
+                    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+
+            // Shader 28: Infinity Mirror - Recursive reflections
+            infinityMirror: `
+                precision highp float;
+                uniform vec2 iResolution;
+                uniform float iTime;
+                uniform vec2 iMouse;
+                uniform float uSpeed;
+                uniform float uTimeOffset;
+                uniform float uZoom;
+                uniform float uFov;
+                uniform float uCamHeight;
+                uniform float uSpikeLength;
+                uniform float uSpikeWidth;
+                uniform float uShellThickness;
+                uniform float uSphereRadius;
+                uniform float uSmoothing;
+                uniform vec3 uLightDir;
+                uniform float uAmbient;
+                uniform float uDiffuse;
+                uniform float uShadowSoft;
+                uniform vec3 uObjectColor;
+                uniform vec3 uLightColor;
+                uniform vec3 uAmbientColor;
+                uniform vec3 uBgColor;
+
+                mat2 rot(float a) {
+                    float c = cos(a), s = sin(a);
+                    return mat2(c, -s, s, c);
+                }
+
+                void main() {
+                    vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+                    float t = iTime * uSpeed + uTimeOffset;
+
+                    vec3 col = uBgColor;
+
+                    // Multiple recursive layers
+                    for (int i = 0; i < 12; i++) {
+                        float fi = float(i);
+
+                        // Scale down for each recursion
+                        float scale = pow(uShellThickness + 0.7, fi) * uZoom;
+                        vec2 layerUV = uv * scale;
+
+                        // Rotate each layer slightly
+                        layerUV = rot(t * 0.2 + fi * 0.1) * layerUV;
+
+                        // Tunnel depth offset
+                        layerUV += vec2(sin(t * 0.3 + fi * 0.5), cos(t * 0.25 + fi * 0.5)) * 0.1 * uCamHeight;
+
+                        // Frame/mirror border
+                        vec2 absUV = abs(layerUV);
+                        float frame = max(absUV.x, absUV.y);
+
+                        float outerEdge = uSphereRadius;
+                        float innerEdge = outerEdge - uSpikeWidth * 0.15;
+
+                        // Frame glow
+                        float frameGlow = smoothstep(outerEdge, innerEdge, frame) * (1.0 - smoothstep(innerEdge - 0.02, innerEdge, frame));
+
+                        // Neon edge
+                        float neonEdge = exp(-abs(frame - outerEdge) * uShadowSoft * 20.0);
+
+                        // Color varies by depth
+                        vec3 layerColor = uObjectColor;
+                        layerColor = mix(layerColor, uLightColor, sin(fi * 0.5 + t) * 0.5 + 0.5);
+                        layerColor = mix(layerColor, uAmbientColor, cos(fi * 0.3 + t * 0.7) * 0.5 + 0.5);
+
+                        // Depth fade
+                        float depthFade = 1.0 / (1.0 + fi * 0.2);
+
+                        // Corner decorations
+                        float corner = 0.0;
+                        for (int c = 0; c < 4; c++) {
+                            float ca = float(c) * 1.5708 + 0.785; // 45 degree offset corners
+                            vec2 cornerPos = vec2(cos(ca), sin(ca)) * outerEdge * 0.9;
+                            float d = length(layerUV - cornerPos);
+                            corner += exp(-d * uShadowSoft * 15.0);
+                        }
+
+                        col += layerColor * frameGlow * uAmbient * depthFade * 0.5;
+                        col += layerColor * neonEdge * uDiffuse * depthFade * 0.3;
+                        col += uLightColor * corner * uSmoothing * depthFade * 0.2;
+                    }
+
+                    // Center light source
+                    float centerGlow = exp(-length(uv) * uSpikeLength * 2.0);
+                    col += uLightColor * centerGlow * uDiffuse;
+
+                    // Pulsing effect
+                    float pulse = 0.8 + 0.2 * sin(t * 2.0);
+                    col *= pulse;
+
+                    // Chromatic aberration at edges
+                    float dist = length(uv);
+                    float aberration = smoothstep(0.3, 0.8, dist) * 0.02 * uSmoothing;
+                    col.r *= 1.0 + aberration;
+                    col.b *= 1.0 - aberration;
+
+                    col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
             `
         };
 
@@ -2746,10 +4613,208 @@
                 { name: 'Void', speed: 0.35, timeOffset: 2.5, zoom: 5, fov: 2.3, camHeight: 0.65, spikeLength: 0.7, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1.1, smoothing: 0.06, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.2, diffuse: 0.45, shadowSoft: 2, objectColor: '#2a2a44', lightColor: '#4a4a66', ambientColor: '#151533', bgColor: '#000000' },
                 { name: 'Gold', speed: 0.7, timeOffset: 0, zoom: 4.4, fov: 2, camHeight: 0.5, spikeLength: 0.95, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1.0, smoothing: 0.1, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.6, diffuse: 1.4, shadowSoft: 10, objectColor: '#ddaa44', lightColor: '#ffeeaa', ambientColor: '#775522', bgColor: '#080500' },
                 { name: 'Matrix', speed: 0.9, timeOffset: 1.2, zoom: 4.3, fov: 2, camHeight: 0.4, spikeLength: 1.0, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1.05, smoothing: 0.1, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.5, diffuse: 1.55, shadowSoft: 8, objectColor: '#00ee44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000600' }
+            ],
+            11: [ // Fractal Cosmos - Deep space fractals
+                { name: 'Deep Space', speed: 0.5, timeOffset: 0, zoom: 10, fov: 1, camHeight: 1, spikeLength: 1.0, spikeWidth: 0.1, shellThickness: 0.29, sphereRadius: 1, smoothing: 0.15, lightX: 0, lightY: 1, lightZ: 0, ambient: 1.2, diffuse: 1.5, shadowSoft: 8, objectColor: '#ff4488', lightColor: '#88ffff', ambientColor: '#440044', bgColor: '#000008' },
+                { name: 'Nebula', speed: 0.3, timeOffset: 2, zoom: 12, fov: 1, camHeight: 1, spikeLength: 1.5, spikeWidth: 0.15, shellThickness: 0.25, sphereRadius: 1, smoothing: 0.2, lightX: 0.5, lightY: 0.8, lightZ: 0.3, ambient: 1.0, diffuse: 1.8, shadowSoft: 10, objectColor: '#ff66aa', lightColor: '#aaffff', ambientColor: '#330033', bgColor: '#050010' },
+                { name: 'Cosmic Fire', speed: 0.8, timeOffset: 0, zoom: 8, fov: 1, camHeight: 1, spikeLength: 0.8, spikeWidth: 0.08, shellThickness: 0.3, sphereRadius: 1, smoothing: 0.1, lightX: -0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.8, diffuse: 2.0, shadowSoft: 5, objectColor: '#ff6622', lightColor: '#ffaa44', ambientColor: '#441100', bgColor: '#080200' },
+                { name: 'Ice Crystal', speed: 0.4, timeOffset: 0, zoom: 11, fov: 1, camHeight: 1, spikeLength: 1.2, spikeWidth: 0.12, shellThickness: 0.27, sphereRadius: 1, smoothing: 0.18, lightX: 0.6, lightY: 0.7, lightZ: 0.4, ambient: 1.4, diffuse: 1.2, shadowSoft: 12, objectColor: '#aaddff', lightColor: '#ffffff', ambientColor: '#334466', bgColor: '#020610' },
+                { name: 'Void Walker', speed: 0.2, timeOffset: 5, zoom: 15, fov: 1, camHeight: 1, spikeLength: 0.6, spikeWidth: 0.05, shellThickness: 0.32, sphereRadius: 1, smoothing: 0.08, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.4, diffuse: 0.6, shadowSoft: 3, objectColor: '#333355', lightColor: '#555577', ambientColor: '#111133', bgColor: '#000000' },
+                { name: 'Neon Galaxy', speed: 0.6, timeOffset: 0, zoom: 9, fov: 1, camHeight: 1, spikeLength: 1.1, spikeWidth: 0.13, shellThickness: 0.28, sphereRadius: 1, smoothing: 0.16, lightX: -0.7, lightY: 0.4, lightZ: 0.5, ambient: 0.6, diffuse: 2.2, shadowSoft: 4, objectColor: '#ff00ff', lightColor: '#00ffaa', ambientColor: '#660066', bgColor: '#080005' },
+                { name: 'Gold Rush', speed: 0.5, timeOffset: 0, zoom: 10, fov: 1, camHeight: 1, spikeLength: 1.0, spikeWidth: 0.1, shellThickness: 0.29, sphereRadius: 1, smoothing: 0.14, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.9, diffuse: 1.6, shadowSoft: 8, objectColor: '#ddaa44', lightColor: '#ffeeaa', ambientColor: '#553311', bgColor: '#080500' },
+                { name: 'Matrix Code', speed: 0.7, timeOffset: 1, zoom: 9, fov: 1, camHeight: 1, spikeLength: 0.9, spikeWidth: 0.09, shellThickness: 0.3, sphereRadius: 1, smoothing: 0.12, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.7, diffuse: 1.8, shadowSoft: 6, objectColor: '#00ff44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000800' },
+                { name: 'Alien', speed: 0.45, timeOffset: 0, zoom: 11, fov: 1, camHeight: 1, spikeLength: 1.3, spikeWidth: 0.11, shellThickness: 0.26, sphereRadius: 1, smoothing: 0.17, lightX: 0.3, lightY: 0.9, lightZ: 0.3, ambient: 1.1, diffuse: 1.4, shadowSoft: 9, objectColor: '#44ff88', lightColor: '#aaffcc', ambientColor: '#114422', bgColor: '#000a05' }
+            ],
+            12: [ // Plasma Vortex - Swirling energy
+                { name: 'Default', speed: 0.5, timeOffset: 0, zoom: 8, fov: 1, camHeight: 1, spikeLength: 1.0, spikeWidth: 0.05, shellThickness: 0.08, sphereRadius: 1, smoothing: 0.1, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.8, diffuse: 1.5, shadowSoft: 8, objectColor: '#ff6688', lightColor: '#88ffff', ambientColor: '#442244', bgColor: '#050008' },
+                { name: 'Solar Flare', speed: 0.8, timeOffset: 0, zoom: 6, fov: 1, camHeight: 1, spikeLength: 1.2, spikeWidth: 0.08, shellThickness: 0.1, sphereRadius: 1, smoothing: 0.12, lightX: 0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.6, diffuse: 2.0, shadowSoft: 5, objectColor: '#ff4400', lightColor: '#ffaa44', ambientColor: '#551100', bgColor: '#100500' },
+                { name: 'Electric Blue', speed: 0.6, timeOffset: 0, zoom: 7, fov: 1, camHeight: 1, spikeLength: 0.8, spikeWidth: 0.04, shellThickness: 0.07, sphereRadius: 1, smoothing: 0.08, lightX: 0, lightY: 0.8, lightZ: 0.6, ambient: 1.0, diffuse: 1.8, shadowSoft: 10, objectColor: '#4488ff', lightColor: '#aaddff', ambientColor: '#112244', bgColor: '#000510' },
+                { name: 'Toxic', speed: 0.7, timeOffset: 2, zoom: 7, fov: 1, camHeight: 1, spikeLength: 1.1, spikeWidth: 0.06, shellThickness: 0.09, sphereRadius: 1, smoothing: 0.11, lightX: -0.4, lightY: 0.7, lightZ: 0.5, ambient: 0.9, diffuse: 1.6, shadowSoft: 7, objectColor: '#66ff44', lightColor: '#aaffaa', ambientColor: '#224411', bgColor: '#000800' },
+                { name: 'Ice Storm', speed: 0.4, timeOffset: 0, zoom: 9, fov: 1, camHeight: 1, spikeLength: 0.7, spikeWidth: 0.03, shellThickness: 0.06, sphereRadius: 1, smoothing: 0.06, lightX: 0.6, lightY: 0.7, lightZ: 0.4, ambient: 1.3, diffuse: 1.1, shadowSoft: 14, objectColor: '#aaddff', lightColor: '#ffffff', ambientColor: '#5588aa', bgColor: '#020610' },
+                { name: 'Neon Chaos', speed: 0.9, timeOffset: 0, zoom: 5, fov: 1, camHeight: 1, spikeLength: 1.3, spikeWidth: 0.09, shellThickness: 0.11, sphereRadius: 1, smoothing: 0.14, lightX: -0.8, lightY: 0.3, lightZ: 0.5, ambient: 0.5, diffuse: 2.5, shadowSoft: 3, objectColor: '#ff00cc', lightColor: '#00ffaa', ambientColor: '#880066', bgColor: '#080005' },
+                { name: 'Void Spiral', speed: 0.25, timeOffset: 4, zoom: 10, fov: 1, camHeight: 1, spikeLength: 0.5, spikeWidth: 0.02, shellThickness: 0.05, sphereRadius: 1, smoothing: 0.04, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.3, diffuse: 0.5, shadowSoft: 2, objectColor: '#333355', lightColor: '#555577', ambientColor: '#1a1a33', bgColor: '#000000' },
+                { name: 'Gold Plasma', speed: 0.55, timeOffset: 0, zoom: 8, fov: 1, camHeight: 1, spikeLength: 0.9, spikeWidth: 0.05, shellThickness: 0.08, sphereRadius: 1, smoothing: 0.1, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.85, diffuse: 1.5, shadowSoft: 9, objectColor: '#ddaa44', lightColor: '#ffeeaa', ambientColor: '#775522', bgColor: '#080500' },
+                { name: 'Matrix Vortex', speed: 0.65, timeOffset: 1.5, zoom: 7, fov: 1, camHeight: 1, spikeLength: 1.0, spikeWidth: 0.055, shellThickness: 0.085, sphereRadius: 1, smoothing: 0.1, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.75, diffuse: 1.7, shadowSoft: 7, objectColor: '#00ee44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000600' }
+            ],
+            13: [ // Neon Boxes - Geometric neon
+                { name: 'Default', speed: 1.0, timeOffset: 0, zoom: 4, fov: 1.5, camHeight: 0, spikeLength: 1.5, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.1, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.6, diffuse: 1.5, shadowSoft: 23, objectColor: '#4466ff', lightColor: '#00ffff', ambientColor: '#112244', bgColor: '#000510' },
+                { name: 'Cyber Punk', speed: 1.2, timeOffset: 0, zoom: 3.5, fov: 1.8, camHeight: 0.2, spikeLength: 1.8, spikeWidth: 0.06, shellThickness: 0.04, sphereRadius: 1, smoothing: 0.12, lightX: -0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.4, diffuse: 2.0, shadowSoft: 18, objectColor: '#ff0088', lightColor: '#00ff88', ambientColor: '#440044', bgColor: '#080008' },
+                { name: 'Tron', speed: 0.8, timeOffset: 0, zoom: 4.5, fov: 1.3, camHeight: -0.1, spikeLength: 1.2, spikeWidth: 0.04, shellThickness: 0.025, sphereRadius: 1, smoothing: 0.08, lightX: 0.3, lightY: 0.9, lightZ: 0.3, ambient: 0.5, diffuse: 1.8, shadowSoft: 25, objectColor: '#00ccff', lightColor: '#ffffff', ambientColor: '#003366', bgColor: '#000308' },
+                { name: 'Fire Grid', speed: 1.5, timeOffset: 0, zoom: 3, fov: 2, camHeight: 0.3, spikeLength: 2.0, spikeWidth: 0.07, shellThickness: 0.05, sphereRadius: 1, smoothing: 0.15, lightX: 0, lightY: 0.5, lightZ: 0.8, ambient: 0.5, diffuse: 2.2, shadowSoft: 15, objectColor: '#ff4400', lightColor: '#ffaa44', ambientColor: '#441100', bgColor: '#100200' },
+                { name: 'Ice Cubes', speed: 0.6, timeOffset: 0, zoom: 5, fov: 1.2, camHeight: -0.2, spikeLength: 1.0, spikeWidth: 0.03, shellThickness: 0.02, sphereRadius: 1, smoothing: 0.06, lightX: 0.6, lightY: 0.7, lightZ: 0.4, ambient: 1.0, diffuse: 1.2, shadowSoft: 30, objectColor: '#aaddff', lightColor: '#ffffff', ambientColor: '#5588aa', bgColor: '#020610' },
+                { name: 'Neon Pulse', speed: 1.8, timeOffset: 0, zoom: 2.5, fov: 2.2, camHeight: 0.4, spikeLength: 2.2, spikeWidth: 0.08, shellThickness: 0.06, sphereRadius: 1, smoothing: 0.18, lightX: -0.7, lightY: 0.4, lightZ: 0.5, ambient: 0.3, diffuse: 2.8, shadowSoft: 12, objectColor: '#ff00ff', lightColor: '#00ffaa', ambientColor: '#880066', bgColor: '#080005' },
+                { name: 'Void Boxes', speed: 0.4, timeOffset: 3, zoom: 6, fov: 1, camHeight: -0.3, spikeLength: 0.8, spikeWidth: 0.025, shellThickness: 0.015, sphereRadius: 1, smoothing: 0.04, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.25, diffuse: 0.6, shadowSoft: 35, objectColor: '#333355', lightColor: '#555577', ambientColor: '#1a1a33', bgColor: '#000000' },
+                { name: 'Gold Bars', speed: 0.9, timeOffset: 0, zoom: 4, fov: 1.5, camHeight: 0, spikeLength: 1.4, spikeWidth: 0.05, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.1, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.7, diffuse: 1.6, shadowSoft: 22, objectColor: '#ddaa44', lightColor: '#ffeeaa', ambientColor: '#775522', bgColor: '#080500' },
+                { name: 'Matrix Cubes', speed: 1.1, timeOffset: 1, zoom: 3.8, fov: 1.6, camHeight: 0.1, spikeLength: 1.6, spikeWidth: 0.055, shellThickness: 0.035, sphereRadius: 1, smoothing: 0.11, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.55, diffuse: 1.9, shadowSoft: 20, objectColor: '#00ff44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000800' }
+            ],
+            14: [ // Warp Tunnel - Space tunnel
+                { name: 'Default', speed: 0.5, timeOffset: 0, zoom: 4, fov: 1, camHeight: 1, spikeLength: 1.0, spikeWidth: 1.0, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.1, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.8, diffuse: 1.5, shadowSoft: 8, objectColor: '#4466aa', lightColor: '#00aaff', ambientColor: '#223355', bgColor: '#000510' },
+                { name: 'Hyperspace', speed: 0.8, timeOffset: 0, zoom: 3, fov: 1.2, camHeight: 1.2, spikeLength: 1.5, spikeWidth: 1.5, shellThickness: 0.04, sphereRadius: 1, smoothing: 0.12, lightX: 0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.6, diffuse: 2.0, shadowSoft: 5, objectColor: '#ffffff', lightColor: '#aaddff', ambientColor: '#444466', bgColor: '#000005' },
+                { name: 'Lava Tube', speed: 0.6, timeOffset: 0, zoom: 5, fov: 0.8, camHeight: 0.8, spikeLength: 0.8, spikeWidth: 0.8, shellThickness: 0.025, sphereRadius: 1.2, smoothing: 0.08, lightX: -0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.5, diffuse: 2.2, shadowSoft: 6, objectColor: '#ff4400', lightColor: '#ffaa44', ambientColor: '#441100', bgColor: '#100200' },
+                { name: 'Bio Tunnel', speed: 0.4, timeOffset: 2, zoom: 4.5, fov: 1, camHeight: 1, spikeLength: 1.2, spikeWidth: 1.2, shellThickness: 0.035, sphereRadius: 1, smoothing: 0.1, lightX: 0.3, lightY: 0.8, lightZ: 0.5, ambient: 0.7, diffuse: 1.6, shadowSoft: 9, objectColor: '#66aa44', lightColor: '#aaffaa', ambientColor: '#224411', bgColor: '#000800' },
+                { name: 'Ice Warp', speed: 0.35, timeOffset: 0, zoom: 5.5, fov: 0.9, camHeight: 0.9, spikeLength: 0.7, spikeWidth: 0.7, shellThickness: 0.02, sphereRadius: 1.1, smoothing: 0.06, lightX: 0.6, lightY: 0.7, lightZ: 0.4, ambient: 1.2, diffuse: 1.0, shadowSoft: 14, objectColor: '#aaddff', lightColor: '#ffffff', ambientColor: '#5588aa', bgColor: '#020610' },
+                { name: 'Neon Express', speed: 0.9, timeOffset: 0, zoom: 2.5, fov: 1.3, camHeight: 1.3, spikeLength: 1.8, spikeWidth: 1.8, shellThickness: 0.05, sphereRadius: 0.9, smoothing: 0.15, lightX: -0.7, lightY: 0.4, lightZ: 0.5, ambient: 0.4, diffuse: 2.5, shadowSoft: 4, objectColor: '#ff00cc', lightColor: '#00ffaa', ambientColor: '#880066', bgColor: '#080005' },
+                { name: 'Void Transit', speed: 0.2, timeOffset: 5, zoom: 6, fov: 0.7, camHeight: 0.7, spikeLength: 0.5, spikeWidth: 0.5, shellThickness: 0.015, sphereRadius: 1.2, smoothing: 0.04, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.3, diffuse: 0.5, shadowSoft: 2, objectColor: '#333355', lightColor: '#555577', ambientColor: '#1a1a33', bgColor: '#000000' },
+                { name: 'Gold Rush', speed: 0.55, timeOffset: 0, zoom: 4, fov: 1, camHeight: 1, spikeLength: 1.0, spikeWidth: 1.0, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.1, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.8, diffuse: 1.6, shadowSoft: 10, objectColor: '#ddaa44', lightColor: '#ffeeaa', ambientColor: '#775522', bgColor: '#080500' },
+                { name: 'Matrix Warp', speed: 0.65, timeOffset: 1, zoom: 3.5, fov: 1.1, camHeight: 1.1, spikeLength: 1.3, spikeWidth: 1.3, shellThickness: 0.035, sphereRadius: 1, smoothing: 0.1, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.6, diffuse: 1.8, shadowSoft: 7, objectColor: '#00ff44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000800' }
+            ],
+            15: [ // Hyperdrive - Star warp
+                { name: 'Default', speed: 1.0, timeOffset: 0, zoom: 1, fov: 1, camHeight: 1, spikeLength: 1.0, spikeWidth: 1.0, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.5, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.8, diffuse: 1.5, shadowSoft: 5, objectColor: '#4488ff', lightColor: '#ffffff', ambientColor: '#223366', bgColor: '#000308' },
+                { name: 'Lightspeed', speed: 2.0, timeOffset: 0, zoom: 2, fov: 1, camHeight: 1, spikeLength: 2.0, spikeWidth: 1.5, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.3, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.6, diffuse: 2.0, shadowSoft: 3, objectColor: '#88ddff', lightColor: '#ffffff', ambientColor: '#445577', bgColor: '#000208' },
+                { name: 'Warp Core', speed: 1.5, timeOffset: 0, zoom: 1.5, fov: 1, camHeight: 1, spikeLength: 1.5, spikeWidth: 1.2, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.4, lightX: 0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.5, diffuse: 2.5, shadowSoft: 4, objectColor: '#ff6622', lightColor: '#ffaa44', ambientColor: '#662200', bgColor: '#100500' },
+                { name: 'Nebula Jump', speed: 0.8, timeOffset: 2, zoom: 0.8, fov: 1, camHeight: 1, spikeLength: 0.8, spikeWidth: 0.8, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.6, lightX: 0.3, lightY: 0.8, lightZ: 0.5, ambient: 1.0, diffuse: 1.2, shadowSoft: 8, objectColor: '#aa44ff', lightColor: '#ddaaff', ambientColor: '#442266', bgColor: '#050010' },
+                { name: 'Ice Drift', speed: 0.6, timeOffset: 0, zoom: 0.6, fov: 1, camHeight: 1, spikeLength: 0.6, spikeWidth: 0.6, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.7, lightX: 0.6, lightY: 0.7, lightZ: 0.4, ambient: 1.3, diffuse: 1.0, shadowSoft: 10, objectColor: '#aaddff', lightColor: '#ffffff', ambientColor: '#5588aa', bgColor: '#020610' },
+                { name: 'Neon Warp', speed: 2.5, timeOffset: 0, zoom: 2.5, fov: 1, camHeight: 1, spikeLength: 2.5, spikeWidth: 2.0, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.2, lightX: -0.7, lightY: 0.4, lightZ: 0.5, ambient: 0.4, diffuse: 3.0, shadowSoft: 2, objectColor: '#ff00ff', lightColor: '#00ffaa', ambientColor: '#880066', bgColor: '#080005' },
+                { name: 'Void Jump', speed: 0.4, timeOffset: 5, zoom: 0.4, fov: 1, camHeight: 1, spikeLength: 0.4, spikeWidth: 0.4, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.8, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.3, diffuse: 0.5, shadowSoft: 15, objectColor: '#333355', lightColor: '#555577', ambientColor: '#1a1a33', bgColor: '#000000' },
+                { name: 'Gold Stream', speed: 1.2, timeOffset: 0, zoom: 1.2, fov: 1, camHeight: 1, spikeLength: 1.2, spikeWidth: 1.0, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.45, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.9, diffuse: 1.6, shadowSoft: 6, objectColor: '#ddaa44', lightColor: '#ffeeaa', ambientColor: '#775522', bgColor: '#080500' },
+                { name: 'Matrix Jump', speed: 1.8, timeOffset: 1, zoom: 1.8, fov: 1, camHeight: 1, spikeLength: 1.8, spikeWidth: 1.4, shellThickness: 0.03, sphereRadius: 1, smoothing: 0.35, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.6, diffuse: 2.0, shadowSoft: 4, objectColor: '#00ff44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000800' }
+            ],
+            16: [ // Neural Storm - Brain activity
+                { name: 'Default', speed: 0.8, timeOffset: 0, zoom: 1.5, fov: 1, camHeight: 1, spikeLength: 0.5, spikeWidth: 1.0, shellThickness: 1.0, sphereRadius: 1, smoothing: 0.5, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.8, diffuse: 1.5, shadowSoft: 8, objectColor: '#6644ff', lightColor: '#88aaff', ambientColor: '#331188', bgColor: '#050010' },
+                { name: 'Synaptic', speed: 1.2, timeOffset: 0, zoom: 1.8, fov: 1, camHeight: 1, spikeLength: 0.7, spikeWidth: 1.5, shellThickness: 1.2, sphereRadius: 1.2, smoothing: 0.4, lightX: 0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.6, diffuse: 2.0, shadowSoft: 5, objectColor: '#ff44aa', lightColor: '#ffaadd', ambientColor: '#661144', bgColor: '#100008' },
+                { name: 'Neurons', speed: 0.6, timeOffset: 0, zoom: 1.2, fov: 1, camHeight: 1, spikeLength: 0.4, spikeWidth: 0.8, shellThickness: 0.8, sphereRadius: 0.8, smoothing: 0.6, lightX: 0.3, lightY: 0.8, lightZ: 0.5, ambient: 1.0, diffuse: 1.3, shadowSoft: 10, objectColor: '#44ffaa', lightColor: '#aaffdd', ambientColor: '#116644', bgColor: '#000a08' },
+                { name: 'Brain Wave', speed: 1.0, timeOffset: 2, zoom: 1.5, fov: 1, camHeight: 1, spikeLength: 0.6, spikeWidth: 1.2, shellThickness: 1.1, sphereRadius: 1.1, smoothing: 0.5, lightX: -0.4, lightY: 0.7, lightZ: 0.5, ambient: 0.7, diffuse: 1.7, shadowSoft: 7, objectColor: '#ffaa44', lightColor: '#ffddaa', ambientColor: '#664411', bgColor: '#0a0500' },
+                { name: 'Frost Mind', speed: 0.5, timeOffset: 0, zoom: 1.3, fov: 1, camHeight: 1, spikeLength: 0.35, spikeWidth: 0.7, shellThickness: 0.7, sphereRadius: 0.9, smoothing: 0.65, lightX: 0.6, lightY: 0.7, lightZ: 0.4, ambient: 1.2, diffuse: 1.0, shadowSoft: 12, objectColor: '#aaddff', lightColor: '#ffffff', ambientColor: '#5588aa', bgColor: '#020610' },
+                { name: 'Neon Brain', speed: 1.5, timeOffset: 0, zoom: 2.0, fov: 1, camHeight: 1, spikeLength: 0.8, spikeWidth: 1.8, shellThickness: 1.4, sphereRadius: 1.3, smoothing: 0.3, lightX: -0.7, lightY: 0.4, lightZ: 0.5, ambient: 0.4, diffuse: 2.5, shadowSoft: 4, objectColor: '#ff00cc', lightColor: '#00ffaa', ambientColor: '#880066', bgColor: '#080005' },
+                { name: 'Void Think', speed: 0.3, timeOffset: 4, zoom: 1.0, fov: 1, camHeight: 1, spikeLength: 0.25, spikeWidth: 0.5, shellThickness: 0.5, sphereRadius: 0.7, smoothing: 0.75, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.25, diffuse: 0.5, shadowSoft: 15, objectColor: '#333355', lightColor: '#555577', ambientColor: '#1a1a33', bgColor: '#000000' },
+                { name: 'Gold Mind', speed: 0.7, timeOffset: 0, zoom: 1.4, fov: 1, camHeight: 1, spikeLength: 0.45, spikeWidth: 0.9, shellThickness: 0.9, sphereRadius: 1, smoothing: 0.55, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.85, diffuse: 1.5, shadowSoft: 9, objectColor: '#ddaa44', lightColor: '#ffeeaa', ambientColor: '#775522', bgColor: '#080500' },
+                { name: 'Matrix Mind', speed: 1.0, timeOffset: 1, zoom: 1.6, fov: 1, camHeight: 1, spikeLength: 0.55, spikeWidth: 1.1, shellThickness: 1.0, sphereRadius: 1.1, smoothing: 0.48, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.65, diffuse: 1.8, shadowSoft: 6, objectColor: '#00ff44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000800' }
+            ],
+            17: [ // Cosmic Singularity - Black hole with accretion disk
+                { name: 'Event Horizon', speed: 0.3, timeOffset: 0, zoom: 1.5, fov: 1.2, camHeight: 0, spikeLength: 1.0, spikeWidth: 0.8, shellThickness: 0.5, sphereRadius: 1.0, smoothing: 0.5, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.2, diffuse: 2.5, shadowSoft: 3, objectColor: '#000000', lightColor: '#ff6600', ambientColor: '#220000', bgColor: '#000000' },
+                { name: 'Accretion Fury', speed: 0.8, timeOffset: 0, zoom: 1.2, fov: 1.5, camHeight: 0.3, spikeLength: 1.5, spikeWidth: 1.2, shellThickness: 0.7, sphereRadius: 0.8, smoothing: 0.3, lightX: 0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.4, diffuse: 3.0, shadowSoft: 5, objectColor: '#ff4400', lightColor: '#ffaa00', ambientColor: '#441100', bgColor: '#050000' },
+                { name: 'Quantum Collapse', speed: 0.5, timeOffset: 2, zoom: 2.0, fov: 1.0, camHeight: -0.2, spikeLength: 0.8, spikeWidth: 0.6, shellThickness: 0.4, sphereRadius: 1.2, smoothing: 0.6, lightX: -0.3, lightY: 0.9, lightZ: 0.3, ambient: 0.15, diffuse: 2.0, shadowSoft: 2, objectColor: '#220044', lightColor: '#8844ff', ambientColor: '#110022', bgColor: '#000005' },
+                { name: 'Stellar Death', speed: 0.6, timeOffset: 0, zoom: 1.8, fov: 1.3, camHeight: 0.1, spikeLength: 1.2, spikeWidth: 1.0, shellThickness: 0.6, sphereRadius: 0.9, smoothing: 0.4, lightX: 0.4, lightY: 0.6, lightZ: 0.5, ambient: 0.3, diffuse: 2.8, shadowSoft: 4, objectColor: '#ff2200', lightColor: '#ffcc44', ambientColor: '#330500', bgColor: '#020000' },
+                { name: 'Void Maw', speed: 0.2, timeOffset: 5, zoom: 2.5, fov: 0.8, camHeight: -0.4, spikeLength: 0.5, spikeWidth: 0.4, shellThickness: 0.3, sphereRadius: 1.5, smoothing: 0.8, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.05, diffuse: 1.0, shadowSoft: 1, objectColor: '#000000', lightColor: '#333355', ambientColor: '#000011', bgColor: '#000000' },
+                { name: 'Plasma Jets', speed: 1.0, timeOffset: 0, zoom: 1.0, fov: 1.8, camHeight: 0.5, spikeLength: 2.0, spikeWidth: 1.5, shellThickness: 0.8, sphereRadius: 0.7, smoothing: 0.25, lightX: 0, lightY: 0.3, lightZ: 0.9, ambient: 0.5, diffuse: 3.5, shadowSoft: 6, objectColor: '#00aaff', lightColor: '#88ffff', ambientColor: '#002244', bgColor: '#000308' },
+                { name: 'Hawking Glow', speed: 0.4, timeOffset: 0, zoom: 1.6, fov: 1.1, camHeight: 0, spikeLength: 0.9, spikeWidth: 0.7, shellThickness: 0.45, sphereRadius: 1.1, smoothing: 0.55, lightX: 0.6, lightY: 0.7, lightZ: 0.4, ambient: 0.25, diffuse: 2.2, shadowSoft: 3, objectColor: '#ffffff', lightColor: '#aaffff', ambientColor: '#334455', bgColor: '#000208' },
+                { name: 'Neon Singularity', speed: 0.7, timeOffset: 0, zoom: 1.3, fov: 1.4, camHeight: 0.2, spikeLength: 1.3, spikeWidth: 1.1, shellThickness: 0.65, sphereRadius: 0.85, smoothing: 0.35, lightX: -0.7, lightY: 0.4, lightZ: 0.5, ambient: 0.35, diffuse: 3.2, shadowSoft: 4, objectColor: '#ff00ff', lightColor: '#00ffaa', ambientColor: '#440044', bgColor: '#080005' },
+                { name: 'Gold Corona', speed: 0.5, timeOffset: 0, zoom: 1.5, fov: 1.2, camHeight: 0, spikeLength: 1.0, spikeWidth: 0.85, shellThickness: 0.52, sphereRadius: 1.0, smoothing: 0.48, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.4, diffuse: 2.5, shadowSoft: 5, objectColor: '#ddaa22', lightColor: '#ffeeaa', ambientColor: '#553300', bgColor: '#0a0500' }
+            ],
+            18: [ // Dimensional Rift - Reality-tearing portal
+                { name: 'Reality Tear', speed: 0.6, timeOffset: 0, zoom: 1.0, fov: 1.5, camHeight: 0, spikeLength: 1.5, spikeWidth: 1.0, shellThickness: 0.8, sphereRadius: 1.0, smoothing: 0.4, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.5, diffuse: 2.0, shadowSoft: 6, objectColor: '#8800ff', lightColor: '#ff00aa', ambientColor: '#220044', bgColor: '#050008' },
+                { name: 'Dimension Bleed', speed: 0.8, timeOffset: 0, zoom: 0.8, fov: 1.8, camHeight: 0.3, spikeLength: 2.0, spikeWidth: 1.5, shellThickness: 1.0, sphereRadius: 0.8, smoothing: 0.3, lightX: 0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.6, diffuse: 2.5, shadowSoft: 5, objectColor: '#ff0066', lightColor: '#00ffff', ambientColor: '#440022', bgColor: '#080005' },
+                { name: 'Void Fracture', speed: 0.4, timeOffset: 3, zoom: 1.5, fov: 1.2, camHeight: -0.2, spikeLength: 1.0, spikeWidth: 0.7, shellThickness: 0.6, sphereRadius: 1.2, smoothing: 0.55, lightX: 0, lightY: 0.8, lightZ: 0.5, ambient: 0.25, diffuse: 1.5, shadowSoft: 3, objectColor: '#333366', lightColor: '#6666aa', ambientColor: '#111133', bgColor: '#000000' },
+                { name: 'Multiverse Gate', speed: 0.7, timeOffset: 0, zoom: 1.2, fov: 1.6, camHeight: 0.1, spikeLength: 1.8, spikeWidth: 1.2, shellThickness: 0.9, sphereRadius: 0.9, smoothing: 0.35, lightX: -0.4, lightY: 0.7, lightZ: 0.5, ambient: 0.55, diffuse: 2.3, shadowSoft: 7, objectColor: '#00ff88', lightColor: '#88ffdd', ambientColor: '#003322', bgColor: '#000a05' },
+                { name: 'Chaos Portal', speed: 1.0, timeOffset: 0, zoom: 0.6, fov: 2.0, camHeight: 0.4, spikeLength: 2.5, spikeWidth: 2.0, shellThickness: 1.2, sphereRadius: 0.7, smoothing: 0.2, lightX: 0.6, lightY: 0.3, lightZ: 0.7, ambient: 0.4, diffuse: 3.0, shadowSoft: 4, objectColor: '#ff4400', lightColor: '#ffaa00', ambientColor: '#551100', bgColor: '#100500' },
+                { name: 'Neon Breach', speed: 0.9, timeOffset: 0, zoom: 0.9, fov: 1.7, camHeight: 0.2, spikeLength: 1.6, spikeWidth: 1.3, shellThickness: 0.85, sphereRadius: 0.85, smoothing: 0.28, lightX: -0.7, lightY: 0.4, lightZ: 0.5, ambient: 0.35, diffuse: 2.8, shadowSoft: 4, objectColor: '#ff00cc', lightColor: '#00ffbb', ambientColor: '#660044', bgColor: '#080008' },
+                { name: 'Ice Dimension', speed: 0.5, timeOffset: 0, zoom: 1.3, fov: 1.4, camHeight: 0, spikeLength: 1.2, spikeWidth: 0.9, shellThickness: 0.7, sphereRadius: 1.05, smoothing: 0.45, lightX: 0.6, lightY: 0.7, lightZ: 0.4, ambient: 0.7, diffuse: 1.8, shadowSoft: 10, objectColor: '#aaddff', lightColor: '#ffffff', ambientColor: '#4477aa', bgColor: '#020610' },
+                { name: 'Gold Anomaly', speed: 0.6, timeOffset: 0, zoom: 1.1, fov: 1.5, camHeight: 0.1, spikeLength: 1.4, spikeWidth: 1.0, shellThickness: 0.75, sphereRadius: 0.95, smoothing: 0.4, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.5, diffuse: 2.2, shadowSoft: 8, objectColor: '#ddaa44', lightColor: '#ffeecc', ambientColor: '#664411', bgColor: '#0a0500' },
+                { name: 'Matrix Glitch', speed: 0.8, timeOffset: 1, zoom: 1.0, fov: 1.6, camHeight: 0.15, spikeLength: 1.7, spikeWidth: 1.15, shellThickness: 0.88, sphereRadius: 0.88, smoothing: 0.32, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.45, diffuse: 2.5, shadowSoft: 6, objectColor: '#00ff44', lightColor: '#88ff99', ambientColor: '#004411', bgColor: '#000800' }
+            ],
+            19: [ // Stellar Nursery - Star-forming nebula
+                { name: 'Nebula Birth', speed: 0.4, timeOffset: 0, zoom: 2.0, fov: 1, camHeight: 1, spikeLength: 1.0, spikeWidth: 0.1, shellThickness: 0.3, sphereRadius: 1.5, smoothing: 0.5, lightX: 0, lightY: 1, lightZ: 0, ambient: 1.0, diffuse: 1.5, shadowSoft: 8, objectColor: '#ff6688', lightColor: '#88ddff', ambientColor: '#442266', bgColor: '#050008' },
+                { name: 'Cosmic Cradle', speed: 0.3, timeOffset: 2, zoom: 2.5, fov: 1, camHeight: 1, spikeLength: 1.5, spikeWidth: 0.15, shellThickness: 0.25, sphereRadius: 1.8, smoothing: 0.6, lightX: 0.5, lightY: 0.8, lightZ: 0.3, ambient: 0.8, diffuse: 1.8, shadowSoft: 10, objectColor: '#ff88aa', lightColor: '#aaffee', ambientColor: '#330055', bgColor: '#030010' },
+                { name: 'Star Forge', speed: 0.6, timeOffset: 0, zoom: 1.8, fov: 1, camHeight: 1, spikeLength: 0.8, spikeWidth: 0.08, shellThickness: 0.35, sphereRadius: 1.3, smoothing: 0.4, lightX: -0.4, lightY: 0.6, lightZ: 0.6, ambient: 0.6, diffuse: 2.2, shadowSoft: 6, objectColor: '#ffaa44', lightColor: '#ffeeaa', ambientColor: '#553311', bgColor: '#080500' },
+                { name: 'Protostar', speed: 0.5, timeOffset: 0, zoom: 2.2, fov: 1, camHeight: 1, spikeLength: 1.2, spikeWidth: 0.12, shellThickness: 0.28, sphereRadius: 1.6, smoothing: 0.55, lightX: 0.3, lightY: 0.9, lightZ: 0.3, ambient: 1.2, diffuse: 1.3, shadowSoft: 12, objectColor: '#aaddff', lightColor: '#ffffff', ambientColor: '#446688', bgColor: '#020610' },
+                { name: 'Dark Matter', speed: 0.2, timeOffset: 5, zoom: 3.0, fov: 1, camHeight: 1, spikeLength: 0.6, spikeWidth: 0.05, shellThickness: 0.4, sphereRadius: 2.0, smoothing: 0.7, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.3, diffuse: 0.6, shadowSoft: 5, objectColor: '#333355', lightColor: '#555577', ambientColor: '#1a1a33', bgColor: '#000000' },
+                { name: 'Neon Nebula', speed: 0.7, timeOffset: 0, zoom: 1.5, fov: 1, camHeight: 1, spikeLength: 1.3, spikeWidth: 0.18, shellThickness: 0.32, sphereRadius: 1.2, smoothing: 0.35, lightX: -0.7, lightY: 0.4, lightZ: 0.5, ambient: 0.5, diffuse: 2.8, shadowSoft: 4, objectColor: '#ff00ff', lightColor: '#00ffcc', ambientColor: '#660066', bgColor: '#080005' },
+                { name: 'Gold Dust', speed: 0.45, timeOffset: 0, zoom: 2.0, fov: 1, camHeight: 1, spikeLength: 1.0, spikeWidth: 0.1, shellThickness: 0.3, sphereRadius: 1.5, smoothing: 0.5, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.9, diffuse: 1.6, shadowSoft: 9, objectColor: '#ddaa44', lightColor: '#ffeecc', ambientColor: '#664422', bgColor: '#0a0500' },
+                { name: 'Matrix Cloud', speed: 0.55, timeOffset: 1, zoom: 1.8, fov: 1, camHeight: 1, spikeLength: 1.1, spikeWidth: 0.11, shellThickness: 0.31, sphereRadius: 1.4, smoothing: 0.45, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.7, diffuse: 1.9, shadowSoft: 7, objectColor: '#00ff44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000800' },
+                { name: 'Alien Birth', speed: 0.5, timeOffset: 0, zoom: 2.0, fov: 1, camHeight: 1, spikeLength: 1.0, spikeWidth: 0.1, shellThickness: 0.3, sphereRadius: 1.5, smoothing: 0.5, lightX: 0.4, lightY: 0.8, lightZ: 0.4, ambient: 1.1, diffuse: 1.4, shadowSoft: 10, objectColor: '#44ff88', lightColor: '#aaffcc', ambientColor: '#114422', bgColor: '#000a05' }
+            ],
+            20: [ // Cyber Grid - Infinite neon grid
+                { name: 'Outrun', speed: 0.8, timeOffset: 0, zoom: 3.0, fov: 1, camHeight: 0.5, spikeLength: 0.8, spikeWidth: 0.03, shellThickness: 0.5, sphereRadius: 1, smoothing: 0.5, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.8, diffuse: 2.0, shadowSoft: 8, objectColor: '#ff00aa', lightColor: '#00ffff', ambientColor: '#440055', bgColor: '#0a0010' },
+                { name: 'Synthwave', speed: 1.0, timeOffset: 0, zoom: 2.5, fov: 1, camHeight: 0.3, spikeLength: 1.0, spikeWidth: 0.04, shellThickness: 0.6, sphereRadius: 1, smoothing: 0.4, lightX: 0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.6, diffuse: 2.5, shadowSoft: 6, objectColor: '#ff6600', lightColor: '#ffaa00', ambientColor: '#552200', bgColor: '#100500' },
+                { name: 'Cyber Night', speed: 0.6, timeOffset: 2, zoom: 3.5, fov: 1, camHeight: 0.8, spikeLength: 0.6, spikeWidth: 0.02, shellThickness: 0.4, sphereRadius: 1, smoothing: 0.6, lightX: 0, lightY: 0.8, lightZ: 0.5, ambient: 0.5, diffuse: 1.8, shadowSoft: 10, objectColor: '#0088ff', lightColor: '#88ddff', ambientColor: '#003366', bgColor: '#000510' },
+                { name: 'Neon Rush', speed: 1.2, timeOffset: 0, zoom: 2.0, fov: 1, camHeight: 0.2, spikeLength: 1.2, spikeWidth: 0.05, shellThickness: 0.7, sphereRadius: 1, smoothing: 0.3, lightX: -0.6, lightY: 0.4, lightZ: 0.6, ambient: 0.4, diffuse: 3.0, shadowSoft: 4, objectColor: '#ff00ff', lightColor: '#00ffaa', ambientColor: '#660066', bgColor: '#080005' },
+                { name: 'Ice Highway', speed: 0.5, timeOffset: 0, zoom: 4.0, fov: 1, camHeight: 1.0, spikeLength: 0.5, spikeWidth: 0.02, shellThickness: 0.35, sphereRadius: 1, smoothing: 0.7, lightX: 0.6, lightY: 0.7, lightZ: 0.4, ambient: 1.0, diffuse: 1.2, shadowSoft: 12, objectColor: '#aaddff', lightColor: '#ffffff', ambientColor: '#5588aa', bgColor: '#020610' },
+                { name: 'Void Grid', speed: 0.3, timeOffset: 4, zoom: 5.0, fov: 1, camHeight: 1.5, spikeLength: 0.4, spikeWidth: 0.015, shellThickness: 0.3, sphereRadius: 1, smoothing: 0.8, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.25, diffuse: 0.5, shadowSoft: 5, objectColor: '#333355', lightColor: '#555577', ambientColor: '#1a1a33', bgColor: '#000000' },
+                { name: 'Gold Circuit', speed: 0.7, timeOffset: 0, zoom: 3.0, fov: 1, camHeight: 0.5, spikeLength: 0.8, spikeWidth: 0.03, shellThickness: 0.5, sphereRadius: 1, smoothing: 0.5, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.8, diffuse: 1.8, shadowSoft: 9, objectColor: '#ddaa44', lightColor: '#ffeecc', ambientColor: '#664422', bgColor: '#0a0500' },
+                { name: 'Matrix Grid', speed: 0.9, timeOffset: 1, zoom: 2.8, fov: 1, camHeight: 0.4, spikeLength: 0.9, spikeWidth: 0.035, shellThickness: 0.55, sphereRadius: 1, smoothing: 0.45, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.6, diffuse: 2.2, shadowSoft: 7, objectColor: '#00ff44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000800' },
+                { name: 'Alien Tech', speed: 0.8, timeOffset: 0, zoom: 3.0, fov: 1, camHeight: 0.5, spikeLength: 0.8, spikeWidth: 0.03, shellThickness: 0.5, sphereRadius: 1, smoothing: 0.5, lightX: 0.3, lightY: 0.9, lightZ: 0.3, ambient: 1.0, diffuse: 1.6, shadowSoft: 10, objectColor: '#44ff88', lightColor: '#aaffcc', ambientColor: '#114422', bgColor: '#000a05' }
+            ],
+            21: [ // Liquid Aurora - Northern lights
+                { name: 'Northern Sky', speed: 0.5, timeOffset: 0, zoom: 1, fov: 1, camHeight: 0.3, spikeLength: 2.0, spikeWidth: 0.05, shellThickness: 0.5, sphereRadius: 1, smoothing: 0.8, lightX: 0, lightY: 1, lightZ: 0, ambient: 1.0, diffuse: 1.5, shadowSoft: 10, objectColor: '#44ff88', lightColor: '#88ffdd', ambientColor: '#226644', bgColor: '#000a08' },
+                { name: 'Borealis', speed: 0.6, timeOffset: 0, zoom: 1, fov: 1, camHeight: 0.2, spikeLength: 2.5, spikeWidth: 0.06, shellThickness: 0.6, sphereRadius: 1, smoothing: 0.7, lightX: 0.4, lightY: 0.8, lightZ: 0.4, ambient: 0.8, diffuse: 1.8, shadowSoft: 8, objectColor: '#00ffaa', lightColor: '#aaffff', ambientColor: '#005544', bgColor: '#000805' },
+                { name: 'Solar Wind', speed: 0.8, timeOffset: 0, zoom: 1, fov: 1, camHeight: 0.4, spikeLength: 1.5, spikeWidth: 0.04, shellThickness: 0.4, sphereRadius: 1, smoothing: 0.6, lightX: -0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.6, diffuse: 2.2, shadowSoft: 6, objectColor: '#ff6644', lightColor: '#ffaa88', ambientColor: '#552211', bgColor: '#100500' },
+                { name: 'Arctic Glow', speed: 0.4, timeOffset: 2, zoom: 1, fov: 1, camHeight: 0.5, spikeLength: 1.8, spikeWidth: 0.05, shellThickness: 0.45, sphereRadius: 1, smoothing: 0.75, lightX: 0.6, lightY: 0.7, lightZ: 0.4, ambient: 1.2, diffuse: 1.2, shadowSoft: 12, objectColor: '#aaddff', lightColor: '#ffffff', ambientColor: '#5588aa', bgColor: '#020610' },
+                { name: 'Void Aurora', speed: 0.3, timeOffset: 4, zoom: 1, fov: 1, camHeight: 0.6, spikeLength: 1.2, spikeWidth: 0.03, shellThickness: 0.35, sphereRadius: 1, smoothing: 0.85, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.3, diffuse: 0.6, shadowSoft: 5, objectColor: '#333366', lightColor: '#666699', ambientColor: '#1a1a44', bgColor: '#000000' },
+                { name: 'Neon Aurora', speed: 0.7, timeOffset: 0, zoom: 1, fov: 1, camHeight: 0.25, spikeLength: 2.2, spikeWidth: 0.055, shellThickness: 0.55, sphereRadius: 1, smoothing: 0.65, lightX: -0.7, lightY: 0.4, lightZ: 0.5, ambient: 0.5, diffuse: 2.5, shadowSoft: 4, objectColor: '#ff00dd', lightColor: '#00ffbb', ambientColor: '#660055', bgColor: '#080005' },
+                { name: 'Gold Shimmer', speed: 0.5, timeOffset: 0, zoom: 1, fov: 1, camHeight: 0.3, spikeLength: 2.0, spikeWidth: 0.05, shellThickness: 0.5, sphereRadius: 1, smoothing: 0.8, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.9, diffuse: 1.6, shadowSoft: 9, objectColor: '#ddaa44', lightColor: '#ffeecc', ambientColor: '#664422', bgColor: '#0a0500' },
+                { name: 'Matrix Sky', speed: 0.55, timeOffset: 1, zoom: 1, fov: 1, camHeight: 0.35, spikeLength: 1.9, spikeWidth: 0.048, shellThickness: 0.48, sphereRadius: 1, smoothing: 0.78, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.7, diffuse: 1.8, shadowSoft: 8, objectColor: '#00ff44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000800' },
+                { name: 'Alien Sky', speed: 0.5, timeOffset: 0, zoom: 1, fov: 1, camHeight: 0.3, spikeLength: 2.0, spikeWidth: 0.05, shellThickness: 0.5, sphereRadius: 1, smoothing: 0.8, lightX: 0.3, lightY: 0.9, lightZ: 0.3, ambient: 1.0, diffuse: 1.5, shadowSoft: 10, objectColor: '#44ff88', lightColor: '#aaffcc', ambientColor: '#114422', bgColor: '#000a05' }
+            ],
+            22: [ // Fractal Flame - Fire fractals
+                { name: 'Inferno', speed: 1.0, timeOffset: 0, zoom: 1.5, fov: 1, camHeight: 1, spikeLength: 1.2, spikeWidth: 0.8, shellThickness: 0.5, sphereRadius: 1.0, smoothing: 0.5, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.8, diffuse: 2.0, shadowSoft: 6, objectColor: '#ff4400', lightColor: '#ffaa44', ambientColor: '#551100', bgColor: '#100200' },
+                { name: 'Phoenix', speed: 0.8, timeOffset: 0, zoom: 1.8, fov: 1, camHeight: 1, spikeLength: 1.5, spikeWidth: 1.0, shellThickness: 0.6, sphereRadius: 0.8, smoothing: 0.4, lightX: 0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.6, diffuse: 2.5, shadowSoft: 5, objectColor: '#ff6622', lightColor: '#ffcc66', ambientColor: '#662200', bgColor: '#0a0200' },
+                { name: 'Blue Flame', speed: 0.9, timeOffset: 0, zoom: 1.6, fov: 1, camHeight: 1, spikeLength: 1.3, spikeWidth: 0.9, shellThickness: 0.55, sphereRadius: 0.9, smoothing: 0.45, lightX: 0, lightY: 0.8, lightZ: 0.6, ambient: 0.7, diffuse: 2.2, shadowSoft: 7, objectColor: '#4488ff', lightColor: '#aaddff', ambientColor: '#112244', bgColor: '#000510' },
+                { name: 'Ice Fire', speed: 0.6, timeOffset: 2, zoom: 2.0, fov: 1, camHeight: 1, spikeLength: 1.0, spikeWidth: 0.7, shellThickness: 0.45, sphereRadius: 1.1, smoothing: 0.55, lightX: 0.6, lightY: 0.7, lightZ: 0.4, ambient: 1.0, diffuse: 1.5, shadowSoft: 10, objectColor: '#aaddff', lightColor: '#ffffff', ambientColor: '#5588aa', bgColor: '#020610' },
+                { name: 'Void Ember', speed: 0.4, timeOffset: 4, zoom: 2.5, fov: 1, camHeight: 1, spikeLength: 0.8, spikeWidth: 0.5, shellThickness: 0.35, sphereRadius: 1.3, smoothing: 0.7, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.3, diffuse: 0.8, shadowSoft: 4, objectColor: '#333344', lightColor: '#555566', ambientColor: '#1a1a33', bgColor: '#000000' },
+                { name: 'Neon Blaze', speed: 1.2, timeOffset: 0, zoom: 1.3, fov: 1, camHeight: 1, spikeLength: 1.6, spikeWidth: 1.1, shellThickness: 0.65, sphereRadius: 0.7, smoothing: 0.3, lightX: -0.7, lightY: 0.4, lightZ: 0.5, ambient: 0.4, diffuse: 3.0, shadowSoft: 3, objectColor: '#ff00cc', lightColor: '#00ffaa', ambientColor: '#660055', bgColor: '#080005' },
+                { name: 'Gold Flame', speed: 0.85, timeOffset: 0, zoom: 1.7, fov: 1, camHeight: 1, spikeLength: 1.25, spikeWidth: 0.85, shellThickness: 0.52, sphereRadius: 0.95, smoothing: 0.48, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.75, diffuse: 1.9, shadowSoft: 8, objectColor: '#ddaa44', lightColor: '#ffeecc', ambientColor: '#664422', bgColor: '#0a0500' },
+                { name: 'Matrix Fire', speed: 0.95, timeOffset: 1, zoom: 1.55, fov: 1, camHeight: 1, spikeLength: 1.35, spikeWidth: 0.88, shellThickness: 0.53, sphereRadius: 0.92, smoothing: 0.46, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.65, diffuse: 2.1, shadowSoft: 6, objectColor: '#00ff44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000800' },
+                { name: 'Alien Flame', speed: 0.9, timeOffset: 0, zoom: 1.6, fov: 1, camHeight: 1, spikeLength: 1.3, spikeWidth: 0.9, shellThickness: 0.55, sphereRadius: 0.9, smoothing: 0.45, lightX: 0.4, lightY: 0.8, lightZ: 0.4, ambient: 0.9, diffuse: 1.7, shadowSoft: 9, objectColor: '#44ff88', lightColor: '#aaffcc', ambientColor: '#114422', bgColor: '#000a05' }
+            ],
+            23: [ // Quantum Foam - Spacetime bubbles
+                { name: 'Planck Scale', speed: 0.6, timeOffset: 0, zoom: 3.0, fov: 1, camHeight: 1, spikeLength: 2.0, spikeWidth: 0.05, shellThickness: 1.0, sphereRadius: 1.0, smoothing: 0.6, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.8, diffuse: 1.5, shadowSoft: 8, objectColor: '#8866ff', lightColor: '#aa88ff', ambientColor: '#331166', bgColor: '#050010' },
+                { name: 'Virtual Particles', speed: 0.8, timeOffset: 0, zoom: 2.5, fov: 1, camHeight: 1, spikeLength: 2.5, spikeWidth: 0.06, shellThickness: 1.2, sphereRadius: 0.8, smoothing: 0.5, lightX: 0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.6, diffuse: 2.0, shadowSoft: 6, objectColor: '#ff66aa', lightColor: '#ffaacc', ambientColor: '#661144', bgColor: '#100008' },
+                { name: 'Spacetime Fabric', speed: 0.5, timeOffset: 2, zoom: 3.5, fov: 1, camHeight: 1, spikeLength: 1.5, spikeWidth: 0.04, shellThickness: 0.8, sphereRadius: 1.2, smoothing: 0.7, lightX: 0, lightY: 0.8, lightZ: 0.5, ambient: 1.0, diffuse: 1.2, shadowSoft: 10, objectColor: '#aaddff', lightColor: '#ffffff', ambientColor: '#4477aa', bgColor: '#020610' },
+                { name: 'Dark Energy', speed: 0.3, timeOffset: 4, zoom: 4.0, fov: 1, camHeight: 1, spikeLength: 1.0, spikeWidth: 0.03, shellThickness: 0.6, sphereRadius: 1.5, smoothing: 0.8, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.25, diffuse: 0.6, shadowSoft: 5, objectColor: '#222244', lightColor: '#444466', ambientColor: '#111133', bgColor: '#000000' },
+                { name: 'Neon Foam', speed: 0.9, timeOffset: 0, zoom: 2.2, fov: 1, camHeight: 1, spikeLength: 2.8, spikeWidth: 0.07, shellThickness: 1.4, sphereRadius: 0.7, smoothing: 0.4, lightX: -0.7, lightY: 0.4, lightZ: 0.5, ambient: 0.4, diffuse: 2.5, shadowSoft: 4, objectColor: '#ff00ee', lightColor: '#00ffaa', ambientColor: '#660066', bgColor: '#080005' },
+                { name: 'Gold Quantum', speed: 0.6, timeOffset: 0, zoom: 3.0, fov: 1, camHeight: 1, spikeLength: 2.0, spikeWidth: 0.05, shellThickness: 1.0, sphereRadius: 1.0, smoothing: 0.6, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.7, diffuse: 1.6, shadowSoft: 9, objectColor: '#ddaa44', lightColor: '#ffeecc', ambientColor: '#664422', bgColor: '#0a0500' },
+                { name: 'Matrix Foam', speed: 0.7, timeOffset: 1, zoom: 2.8, fov: 1, camHeight: 1, spikeLength: 2.2, spikeWidth: 0.055, shellThickness: 1.1, sphereRadius: 0.9, smoothing: 0.55, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.6, diffuse: 1.8, shadowSoft: 7, objectColor: '#00ff44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000800' },
+                { name: 'Alien Foam', speed: 0.6, timeOffset: 0, zoom: 3.0, fov: 1, camHeight: 1, spikeLength: 2.0, spikeWidth: 0.05, shellThickness: 1.0, sphereRadius: 1.0, smoothing: 0.6, lightX: 0.4, lightY: 0.8, lightZ: 0.4, ambient: 0.9, diffuse: 1.4, shadowSoft: 10, objectColor: '#44ff88', lightColor: '#aaffcc', ambientColor: '#114422', bgColor: '#000a05' },
+                { name: 'Fire Foam', speed: 0.7, timeOffset: 0, zoom: 2.8, fov: 1, camHeight: 1, spikeLength: 2.3, spikeWidth: 0.058, shellThickness: 1.15, sphereRadius: 0.85, smoothing: 0.52, lightX: -0.4, lightY: 0.6, lightZ: 0.6, ambient: 0.55, diffuse: 2.2, shadowSoft: 6, objectColor: '#ff4422', lightColor: '#ffaa66', ambientColor: '#551100', bgColor: '#100200' }
+            ],
+            24: [ // Tesseract - 4D hypercube
+                { name: 'Hypercube', speed: 0.5, timeOffset: 0, zoom: 1.5, fov: 2.0, camHeight: 1, spikeLength: 1, spikeWidth: 1.0, shellThickness: 1.0, sphereRadius: 0.8, smoothing: 0.5, lightX: 0, lightY: 1, lightZ: 0, ambient: 1.0, diffuse: 1.5, shadowSoft: 10, objectColor: '#8888ff', lightColor: '#aaaaff', ambientColor: '#333388', bgColor: '#050010' },
+                { name: '4D Rotation', speed: 0.7, timeOffset: 0, zoom: 1.3, fov: 2.5, camHeight: 1, spikeLength: 1, spikeWidth: 1.2, shellThickness: 1.2, sphereRadius: 0.7, smoothing: 0.4, lightX: 0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.8, diffuse: 2.0, shadowSoft: 8, objectColor: '#ff88ff', lightColor: '#ffaaff', ambientColor: '#663366', bgColor: '#100010' },
+                { name: 'Crystal Cube', speed: 0.4, timeOffset: 2, zoom: 1.8, fov: 1.8, camHeight: 1, spikeLength: 1, spikeWidth: 0.8, shellThickness: 0.8, sphereRadius: 0.9, smoothing: 0.6, lightX: 0.6, lightY: 0.7, lightZ: 0.4, ambient: 1.2, diffuse: 1.2, shadowSoft: 12, objectColor: '#aaddff', lightColor: '#ffffff', ambientColor: '#5588aa', bgColor: '#020610' },
+                { name: 'Void Cube', speed: 0.3, timeOffset: 4, zoom: 2.0, fov: 1.5, camHeight: 1, spikeLength: 1, spikeWidth: 0.6, shellThickness: 0.6, sphereRadius: 1.0, smoothing: 0.7, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.3, diffuse: 0.6, shadowSoft: 6, objectColor: '#333355', lightColor: '#555577', ambientColor: '#1a1a33', bgColor: '#000000' },
+                { name: 'Neon Cube', speed: 0.8, timeOffset: 0, zoom: 1.2, fov: 2.8, camHeight: 1, spikeLength: 1, spikeWidth: 1.4, shellThickness: 1.4, sphereRadius: 0.6, smoothing: 0.3, lightX: -0.7, lightY: 0.4, lightZ: 0.5, ambient: 0.5, diffuse: 2.5, shadowSoft: 5, objectColor: '#ff00ff', lightColor: '#00ffff', ambientColor: '#660066', bgColor: '#080005' },
+                { name: 'Gold Cube', speed: 0.5, timeOffset: 0, zoom: 1.5, fov: 2.0, camHeight: 1, spikeLength: 1, spikeWidth: 1.0, shellThickness: 1.0, sphereRadius: 0.8, smoothing: 0.5, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.9, diffuse: 1.6, shadowSoft: 9, objectColor: '#ddaa44', lightColor: '#ffeecc', ambientColor: '#664422', bgColor: '#0a0500' },
+                { name: 'Matrix Cube', speed: 0.6, timeOffset: 1, zoom: 1.4, fov: 2.2, camHeight: 1, spikeLength: 1, spikeWidth: 1.1, shellThickness: 1.1, sphereRadius: 0.75, smoothing: 0.45, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.7, diffuse: 1.8, shadowSoft: 8, objectColor: '#00ff44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000800' },
+                { name: 'Alien Cube', speed: 0.5, timeOffset: 0, zoom: 1.5, fov: 2.0, camHeight: 1, spikeLength: 1, spikeWidth: 1.0, shellThickness: 1.0, sphereRadius: 0.8, smoothing: 0.5, lightX: 0.4, lightY: 0.8, lightZ: 0.4, ambient: 1.0, diffuse: 1.5, shadowSoft: 10, objectColor: '#44ff88', lightColor: '#aaffcc', ambientColor: '#114422', bgColor: '#000a05' },
+                { name: 'Fire Cube', speed: 0.65, timeOffset: 0, zoom: 1.4, fov: 2.3, camHeight: 1, spikeLength: 1, spikeWidth: 1.15, shellThickness: 1.15, sphereRadius: 0.72, smoothing: 0.42, lightX: -0.5, lightY: 0.5, lightZ: 0.6, ambient: 0.6, diffuse: 2.2, shadowSoft: 6, objectColor: '#ff4422', lightColor: '#ffaa66', ambientColor: '#551100', bgColor: '#100200' }
+            ],
+            25: [ // Digital Rain - Matrix rain
+                { name: 'Matrix', speed: 1.0, timeOffset: 0, zoom: 1, fov: 1, camHeight: 1, spikeLength: 1.0, spikeWidth: 0.05, shellThickness: 1.0, sphereRadius: 0.8, smoothing: 0.5, lightX: 0, lightY: 1, lightZ: 0, ambient: 1.0, diffuse: 1.5, shadowSoft: 10, objectColor: '#00ff44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000800' },
+                { name: 'Red Pill', speed: 1.2, timeOffset: 0, zoom: 1, fov: 1, camHeight: 1, spikeLength: 1.2, spikeWidth: 0.06, shellThickness: 1.2, sphereRadius: 0.7, smoothing: 0.4, lightX: 0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.8, diffuse: 2.0, shadowSoft: 8, objectColor: '#ff4444', lightColor: '#ff8888', ambientColor: '#441111', bgColor: '#100000' },
+                { name: 'Blue Code', speed: 0.8, timeOffset: 2, zoom: 1, fov: 1, camHeight: 1, spikeLength: 0.8, spikeWidth: 0.04, shellThickness: 0.8, sphereRadius: 0.9, smoothing: 0.6, lightX: 0, lightY: 0.8, lightZ: 0.5, ambient: 1.0, diffuse: 1.5, shadowSoft: 10, objectColor: '#4488ff', lightColor: '#88aaff', ambientColor: '#112244', bgColor: '#000510' },
+                { name: 'Ice Code', speed: 0.6, timeOffset: 0, zoom: 1, fov: 1, camHeight: 1, spikeLength: 0.7, spikeWidth: 0.035, shellThickness: 0.7, sphereRadius: 1.0, smoothing: 0.7, lightX: 0.6, lightY: 0.7, lightZ: 0.4, ambient: 1.2, diffuse: 1.2, shadowSoft: 12, objectColor: '#aaddff', lightColor: '#ffffff', ambientColor: '#5588aa', bgColor: '#020610' },
+                { name: 'Void Code', speed: 0.4, timeOffset: 4, zoom: 1, fov: 1, camHeight: 1, spikeLength: 0.5, spikeWidth: 0.025, shellThickness: 0.5, sphereRadius: 1.2, smoothing: 0.8, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.3, diffuse: 0.6, shadowSoft: 6, objectColor: '#333355', lightColor: '#555577', ambientColor: '#1a1a33', bgColor: '#000000' },
+                { name: 'Neon Rain', speed: 1.5, timeOffset: 0, zoom: 1, fov: 1, camHeight: 1, spikeLength: 1.5, spikeWidth: 0.08, shellThickness: 1.5, sphereRadius: 0.6, smoothing: 0.3, lightX: -0.7, lightY: 0.4, lightZ: 0.5, ambient: 0.5, diffuse: 2.5, shadowSoft: 5, objectColor: '#ff00ff', lightColor: '#00ffff', ambientColor: '#660066', bgColor: '#080008' },
+                { name: 'Gold Rain', speed: 0.9, timeOffset: 0, zoom: 1, fov: 1, camHeight: 1, spikeLength: 0.9, spikeWidth: 0.045, shellThickness: 0.9, sphereRadius: 0.85, smoothing: 0.55, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.9, diffuse: 1.6, shadowSoft: 9, objectColor: '#ddaa44', lightColor: '#ffeecc', ambientColor: '#664422', bgColor: '#0a0500' },
+                { name: 'Alien Data', speed: 1.0, timeOffset: 0, zoom: 1, fov: 1, camHeight: 1, spikeLength: 1.0, spikeWidth: 0.05, shellThickness: 1.0, sphereRadius: 0.8, smoothing: 0.5, lightX: 0.4, lightY: 0.8, lightZ: 0.4, ambient: 1.0, diffuse: 1.5, shadowSoft: 10, objectColor: '#44ff88', lightColor: '#aaffcc', ambientColor: '#114422', bgColor: '#000a05' },
+                { name: 'Fire Data', speed: 1.1, timeOffset: 0, zoom: 1, fov: 1, camHeight: 1, spikeLength: 1.1, spikeWidth: 0.055, shellThickness: 1.1, sphereRadius: 0.75, smoothing: 0.45, lightX: -0.5, lightY: 0.5, lightZ: 0.6, ambient: 0.7, diffuse: 2.0, shadowSoft: 6, objectColor: '#ff4422', lightColor: '#ffaa66', ambientColor: '#551100', bgColor: '#100200' }
+            ],
+            26: [ // Nebula Core - Explosive nebula
+                { name: 'Supernova', speed: 0.6, timeOffset: 0, zoom: 2.0, fov: 1, camHeight: 1, spikeLength: 1.5, spikeWidth: 0.05, shellThickness: 0.4, sphereRadius: 1.2, smoothing: 0.8, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.8, diffuse: 2.0, shadowSoft: 8, objectColor: '#ff6644', lightColor: '#ffaa88', ambientColor: '#552211', bgColor: '#100500' },
+                { name: 'Starburst', speed: 0.8, timeOffset: 0, zoom: 1.8, fov: 1, camHeight: 1, spikeLength: 1.8, spikeWidth: 0.06, shellThickness: 0.5, sphereRadius: 1.0, smoothing: 0.7, lightX: 0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.6, diffuse: 2.5, shadowSoft: 6, objectColor: '#ffaa44', lightColor: '#ffddaa', ambientColor: '#664411', bgColor: '#0a0500' },
+                { name: 'Blue Giant', speed: 0.5, timeOffset: 2, zoom: 2.2, fov: 1, camHeight: 1, spikeLength: 1.2, spikeWidth: 0.04, shellThickness: 0.35, sphereRadius: 1.3, smoothing: 0.85, lightX: 0, lightY: 0.8, lightZ: 0.5, ambient: 1.0, diffuse: 1.5, shadowSoft: 10, objectColor: '#4488ff', lightColor: '#aaddff', ambientColor: '#112244', bgColor: '#000510' },
+                { name: 'Ice Nova', speed: 0.4, timeOffset: 0, zoom: 2.5, fov: 1, camHeight: 1, spikeLength: 1.0, spikeWidth: 0.03, shellThickness: 0.3, sphereRadius: 1.4, smoothing: 0.9, lightX: 0.6, lightY: 0.7, lightZ: 0.4, ambient: 1.2, diffuse: 1.2, shadowSoft: 12, objectColor: '#aaddff', lightColor: '#ffffff', ambientColor: '#5588aa', bgColor: '#020610' },
+                { name: 'Dark Nova', speed: 0.3, timeOffset: 4, zoom: 3.0, fov: 1, camHeight: 1, spikeLength: 0.8, spikeWidth: 0.02, shellThickness: 0.25, sphereRadius: 1.6, smoothing: 0.95, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.3, diffuse: 0.6, shadowSoft: 5, objectColor: '#333355', lightColor: '#555577', ambientColor: '#1a1a33', bgColor: '#000000' },
+                { name: 'Neon Nova', speed: 0.9, timeOffset: 0, zoom: 1.5, fov: 1, camHeight: 1, spikeLength: 2.0, spikeWidth: 0.07, shellThickness: 0.55, sphereRadius: 0.9, smoothing: 0.6, lightX: -0.7, lightY: 0.4, lightZ: 0.5, ambient: 0.5, diffuse: 2.8, shadowSoft: 4, objectColor: '#ff00ff', lightColor: '#00ffdd', ambientColor: '#660066', bgColor: '#080005' },
+                { name: 'Gold Nova', speed: 0.6, timeOffset: 0, zoom: 2.0, fov: 1, camHeight: 1, spikeLength: 1.5, spikeWidth: 0.05, shellThickness: 0.4, sphereRadius: 1.2, smoothing: 0.8, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.9, diffuse: 1.8, shadowSoft: 9, objectColor: '#ddaa44', lightColor: '#ffeecc', ambientColor: '#664422', bgColor: '#0a0500' },
+                { name: 'Matrix Nova', speed: 0.7, timeOffset: 1, zoom: 1.9, fov: 1, camHeight: 1, spikeLength: 1.6, spikeWidth: 0.055, shellThickness: 0.45, sphereRadius: 1.1, smoothing: 0.75, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.7, diffuse: 2.0, shadowSoft: 8, objectColor: '#00ff44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000800' },
+                { name: 'Alien Nova', speed: 0.6, timeOffset: 0, zoom: 2.0, fov: 1, camHeight: 1, spikeLength: 1.5, spikeWidth: 0.05, shellThickness: 0.4, sphereRadius: 1.2, smoothing: 0.8, lightX: 0.4, lightY: 0.8, lightZ: 0.4, ambient: 1.0, diffuse: 1.6, shadowSoft: 10, objectColor: '#44ff88', lightColor: '#aaffcc', ambientColor: '#114422', bgColor: '#000a05' }
+            ],
+            27: [ // Crystal Cavern - Crystalline formations
+                { name: 'Amethyst', speed: 0.5, timeOffset: 0, zoom: 2.5, fov: 1, camHeight: 1, spikeLength: 2.0, spikeWidth: 0.15, shellThickness: 1.5, sphereRadius: 1.0, smoothing: 0.6, lightX: 0, lightY: 1, lightZ: 0, ambient: 1.0, diffuse: 1.5, shadowSoft: 10, objectColor: '#aa66ff', lightColor: '#ddaaff', ambientColor: '#442266', bgColor: '#0a0015' },
+                { name: 'Emerald', speed: 0.6, timeOffset: 0, zoom: 2.2, fov: 1, camHeight: 1, spikeLength: 2.5, spikeWidth: 0.18, shellThickness: 1.8, sphereRadius: 0.9, smoothing: 0.5, lightX: 0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.8, diffuse: 1.8, shadowSoft: 8, objectColor: '#44ff88', lightColor: '#aaffcc', ambientColor: '#114422', bgColor: '#000a05' },
+                { name: 'Ruby', speed: 0.7, timeOffset: 0, zoom: 2.0, fov: 1, camHeight: 1, spikeLength: 2.2, spikeWidth: 0.16, shellThickness: 1.6, sphereRadius: 0.95, smoothing: 0.55, lightX: -0.4, lightY: 0.6, lightZ: 0.6, ambient: 0.7, diffuse: 2.0, shadowSoft: 7, objectColor: '#ff4466', lightColor: '#ffaacc', ambientColor: '#551133', bgColor: '#100008' },
+                { name: 'Diamond', speed: 0.4, timeOffset: 2, zoom: 3.0, fov: 1, camHeight: 1, spikeLength: 1.5, spikeWidth: 0.12, shellThickness: 1.2, sphereRadius: 1.1, smoothing: 0.7, lightX: 0.6, lightY: 0.7, lightZ: 0.4, ambient: 1.4, diffuse: 1.2, shadowSoft: 14, objectColor: '#aaddff', lightColor: '#ffffff', ambientColor: '#5588aa', bgColor: '#020610' },
+                { name: 'Obsidian', speed: 0.3, timeOffset: 4, zoom: 3.5, fov: 1, camHeight: 1, spikeLength: 1.2, spikeWidth: 0.1, shellThickness: 1.0, sphereRadius: 1.2, smoothing: 0.8, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.3, diffuse: 0.6, shadowSoft: 5, objectColor: '#222244', lightColor: '#444466', ambientColor: '#111133', bgColor: '#000000' },
+                { name: 'Neon Crystal', speed: 0.8, timeOffset: 0, zoom: 1.8, fov: 1, camHeight: 1, spikeLength: 2.8, spikeWidth: 0.2, shellThickness: 2.0, sphereRadius: 0.8, smoothing: 0.4, lightX: -0.7, lightY: 0.4, lightZ: 0.5, ambient: 0.5, diffuse: 2.5, shadowSoft: 4, objectColor: '#ff00ff', lightColor: '#00ffcc', ambientColor: '#660066', bgColor: '#080005' },
+                { name: 'Gold Crystal', speed: 0.5, timeOffset: 0, zoom: 2.5, fov: 1, camHeight: 1, spikeLength: 2.0, spikeWidth: 0.15, shellThickness: 1.5, sphereRadius: 1.0, smoothing: 0.6, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.9, diffuse: 1.6, shadowSoft: 9, objectColor: '#ddaa44', lightColor: '#ffeecc', ambientColor: '#664422', bgColor: '#0a0500' },
+                { name: 'Matrix Crystal', speed: 0.55, timeOffset: 1, zoom: 2.3, fov: 1, camHeight: 1, spikeLength: 2.1, spikeWidth: 0.155, shellThickness: 1.55, sphereRadius: 0.98, smoothing: 0.58, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.75, diffuse: 1.7, shadowSoft: 8, objectColor: '#00ff44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000800' },
+                { name: 'Sapphire', speed: 0.5, timeOffset: 0, zoom: 2.5, fov: 1, camHeight: 1, spikeLength: 2.0, spikeWidth: 0.15, shellThickness: 1.5, sphereRadius: 1.0, smoothing: 0.6, lightX: 0, lightY: 0.8, lightZ: 0.5, ambient: 1.0, diffuse: 1.5, shadowSoft: 10, objectColor: '#4488ff', lightColor: '#aaddff', ambientColor: '#112244', bgColor: '#000510' }
+            ],
+            28: [ // Infinity Mirror - Recursive reflections
+                { name: 'Endless Hall', speed: 0.4, timeOffset: 0, zoom: 1.5, fov: 1, camHeight: 0.5, spikeLength: 1.5, spikeWidth: 0.8, shellThickness: 0.25, sphereRadius: 0.7, smoothing: 0.6, lightX: 0, lightY: 1, lightZ: 0, ambient: 1.0, diffuse: 1.5, shadowSoft: 12, objectColor: '#8888ff', lightColor: '#aaaaff', ambientColor: '#333388', bgColor: '#050010' },
+                { name: 'Neon Tunnel', speed: 0.6, timeOffset: 0, zoom: 1.3, fov: 1, camHeight: 0.3, spikeLength: 1.8, spikeWidth: 1.0, shellThickness: 0.3, sphereRadius: 0.6, smoothing: 0.5, lightX: 0.5, lightY: 0.5, lightZ: 0.5, ambient: 0.8, diffuse: 2.0, shadowSoft: 10, objectColor: '#ff00aa', lightColor: '#00ffff', ambientColor: '#660055', bgColor: '#0a0010' },
+                { name: 'Crystal Hall', speed: 0.35, timeOffset: 2, zoom: 1.8, fov: 1, camHeight: 0.7, spikeLength: 1.2, spikeWidth: 0.6, shellThickness: 0.2, sphereRadius: 0.8, smoothing: 0.7, lightX: 0.6, lightY: 0.7, lightZ: 0.4, ambient: 1.3, diffuse: 1.2, shadowSoft: 14, objectColor: '#aaddff', lightColor: '#ffffff', ambientColor: '#5588aa', bgColor: '#020610' },
+                { name: 'Void Mirror', speed: 0.25, timeOffset: 4, zoom: 2.0, fov: 1, camHeight: 0.9, spikeLength: 1.0, spikeWidth: 0.5, shellThickness: 0.15, sphereRadius: 0.9, smoothing: 0.8, lightX: 0, lightY: 1, lightZ: 0, ambient: 0.3, diffuse: 0.5, shadowSoft: 6, objectColor: '#333355', lightColor: '#555577', ambientColor: '#1a1a33', bgColor: '#000000' },
+                { name: 'Fire Mirror', speed: 0.5, timeOffset: 0, zoom: 1.4, fov: 1, camHeight: 0.4, spikeLength: 1.6, spikeWidth: 0.9, shellThickness: 0.28, sphereRadius: 0.65, smoothing: 0.55, lightX: -0.5, lightY: 0.5, lightZ: 0.6, ambient: 0.6, diffuse: 2.2, shadowSoft: 8, objectColor: '#ff4422', lightColor: '#ffaa66', ambientColor: '#551100', bgColor: '#100200' },
+                { name: 'Neon Infinity', speed: 0.7, timeOffset: 0, zoom: 1.2, fov: 1, camHeight: 0.2, spikeLength: 2.0, spikeWidth: 1.2, shellThickness: 0.35, sphereRadius: 0.55, smoothing: 0.4, lightX: -0.7, lightY: 0.4, lightZ: 0.5, ambient: 0.5, diffuse: 2.5, shadowSoft: 5, objectColor: '#ff00ff', lightColor: '#00ffcc', ambientColor: '#660066', bgColor: '#080005' },
+                { name: 'Gold Mirror', speed: 0.4, timeOffset: 0, zoom: 1.5, fov: 1, camHeight: 0.5, spikeLength: 1.5, spikeWidth: 0.8, shellThickness: 0.25, sphereRadius: 0.7, smoothing: 0.6, lightX: -0.5, lightY: 0.7, lightZ: 0.5, ambient: 0.9, diffuse: 1.6, shadowSoft: 10, objectColor: '#ddaa44', lightColor: '#ffeecc', ambientColor: '#664422', bgColor: '#0a0500' },
+                { name: 'Matrix Mirror', speed: 0.45, timeOffset: 1, zoom: 1.45, fov: 1, camHeight: 0.45, spikeLength: 1.55, spikeWidth: 0.85, shellThickness: 0.26, sphereRadius: 0.68, smoothing: 0.58, lightX: -0.3, lightY: 0.85, lightZ: 0.45, ambient: 0.75, diffuse: 1.7, shadowSoft: 9, objectColor: '#00ff44', lightColor: '#88ff99', ambientColor: '#003311', bgColor: '#000800' },
+                { name: 'Alien Mirror', speed: 0.4, timeOffset: 0, zoom: 1.5, fov: 1, camHeight: 0.5, spikeLength: 1.5, spikeWidth: 0.8, shellThickness: 0.25, sphereRadius: 0.7, smoothing: 0.6, lightX: 0.4, lightY: 0.8, lightZ: 0.4, ambient: 1.0, diffuse: 1.5, shadowSoft: 11, objectColor: '#44ff88', lightColor: '#aaffcc', ambientColor: '#114422', bgColor: '#000a05' }
             ]
         };
 
-        const shaderNames = ['Fractal Orb', 'Plasma Sphere', 'Icosahedron Spikes', 'Crystal Matrix', 'Neon Wireframe', 'Cyberpunk City', 'Liquid Metal', 'Quantum Flux', 'Void Tendrils', 'Prismatic Storm', 'Biomech Entity'];
+        const shaderNames = ['Fractal Orb', 'Plasma Sphere', 'Icosahedron Spikes', 'Crystal Matrix', 'Neon Wireframe', 'Cyberpunk City', 'Liquid Metal', 'Quantum Flux', 'Void Tendrils', 'Prismatic Storm', 'Biomech Entity', 'Fractal Cosmos', 'Plasma Vortex', 'Neon Boxes', 'Warp Tunnel', 'Hyperdrive', 'Neural Storm', 'Cosmic Singularity', 'Dimensional Rift', 'Stellar Nursery', 'Cyber Grid', 'Liquid Aurora', 'Fractal Flame', 'Quantum Foam', 'Tesseract', 'Digital Rain', 'Nebula Core', 'Crystal Cavern', 'Infinity Mirror'];
 
         // ============================================
         // WEBGL SETUP
@@ -2828,7 +4893,25 @@
                 shaders.quantumFlux,
                 shaders.voidTendrils,
                 shaders.prismaticStorm,
-                shaders.biomechEntity
+                shaders.biomechEntity,
+                shaders.fractalCosmos,
+                shaders.plasmaVortex,
+                shaders.neonBoxes,
+                shaders.warpTunnel,
+                shaders.hyperdrive,
+                shaders.neuralStorm,
+                shaders.cosmicSingularity,
+                shaders.dimensionalRift,
+                shaders.stellarNursery,
+                shaders.cyberGrid,
+                shaders.liquidAurora,
+                shaders.fractalFlame,
+                shaders.quantumFoam,
+                shaders.tesseract,
+                shaders.digitalRain,
+                shaders.nebulaCore,
+                shaders.crystalCavern,
+                shaders.infinityMirror
             ];
 
             if (program) gl.deleteProgram(program);
@@ -3106,7 +5189,25 @@
                 shaders.quantumFlux,
                 shaders.voidTendrils,
                 shaders.prismaticStorm,
-                shaders.biomechEntity
+                shaders.biomechEntity,
+                shaders.fractalCosmos,
+                shaders.plasmaVortex,
+                shaders.neonBoxes,
+                shaders.warpTunnel,
+                shaders.hyperdrive,
+                shaders.neuralStorm,
+                shaders.cosmicSingularity,
+                shaders.dimensionalRift,
+                shaders.stellarNursery,
+                shaders.cyberGrid,
+                shaders.liquidAurora,
+                shaders.fractalFlame,
+                shaders.quantumFoam,
+                shaders.tesseract,
+                shaders.digitalRain,
+                shaders.nebulaCore,
+                shaders.crystalCavern,
+                shaders.infinityMirror
             ];
 
             let shaderCode = shaderSources[currentShader];
